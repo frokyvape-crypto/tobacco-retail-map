@@ -1,4 +1,3 @@
-// 카카오 개발자 콘솔(developers.kakao.com) > 내 애플리케이션 > 앱 키 의 "JavaScript 키"를 넣으세요.
-// 비워 두면 페이지 첫 화면에서 키를 입력할 수 있고, 입력한 키는 이 브라우저에만 저장됩니다.
-// 플랫폼 > Web > 사이트 도메인에 이 페이지 주소(예: http://localhost:8765)를 등록해야 지도가 열립니다.
-window.KAKAO_APP_KEY = "";
+// 카카오 JavaScript 키 (map-data 사이트와 같은 키, 사이트 도메인 https://frokyvape-crypto.github.io 에 등록됨).
+// JavaScript 키는 웹페이지에 공개되는 용도의 키입니다. REST API 키·Admin 키는 넣지 마세요.
+window.KAKAO_APP_KEY = "8ec558dec4eb0d751784b4e7ee3fca08";

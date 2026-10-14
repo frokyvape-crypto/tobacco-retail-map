@@ -382,7 +382,8 @@ function redraw() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = CW * dpr; canvas.height = CH * dpr;
   canvas.style.width = CW + "px"; canvas.style.height = CH + "px";
-  layerOverlay.setPosition(pxToLatLng(-mx, -my));
+  // 카카오는 기준점이 화면 밖인 오버레이를 그리지 않으므로, 캔버스 가운데를 화면 가운데에 맞춘다
+  layerOverlay.setPosition(pxToLatLng(aff.W / 2, aff.H / 2));
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, mx * dpr, my * dpr);
   ctx.clearRect(-mx, -my, CW, CH);
@@ -780,7 +781,7 @@ function initMap() {
   places = new kakao.maps.services.Places();
   const layerEl = document.createElement("div"); layerEl.className = "layer";
   canvas = document.createElement("canvas"); layerEl.appendChild(canvas);
-  layerOverlay = new kakao.maps.CustomOverlay({ position: map.getCenter(), content: layerEl, xAnchor: 0, yAnchor: 0, zIndex: 1, map });
+  layerOverlay = new kakao.maps.CustomOverlay({ position: map.getCenter(), content: layerEl, xAnchor: 0.5, yAnchor: 0.5, zIndex: 1, map });
 
   let tilesOk = false;
   kakao.maps.event.addListener(map, "tilesloaded", () => { tilesOk = true; });

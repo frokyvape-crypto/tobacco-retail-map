@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>수도권 담배소매인 입지 지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: 카카오 지도를 가득 채우고 왼쪽(휴대폰은 아래)에 판정 패널. 지도 위 색 = 기존 소매인까지 보행거리 vs 그 구의 기준거리 */
+:root{
+  --bg:#f3f5f4; --panel:#ffffff; --ink:#18201e; --muted:#5c6763; --line:#dde2df; --soft:#eef1ef;
+  --ok:#2f5fe0; --edge:#f08c00; --no:#e03131; --ret:#18201e; --halo:#ffffff; --accent:#2f5fe0;
+  --font-ui:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  --font-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.55 var(--font-ui)}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.panel{overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:20px 20px 28px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.mapwrap{position:relative;min-width:0;height:100%}
+#map{position:absolute;inset:0}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,55%) minmax(0,1fr)}
+  .mapwrap{grid-row:1}
+  .panel{grid-row:2;border-right:none;border-top:1px solid var(--line);padding:14px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+}
+.eyebrow{margin:0;font:500 11.5px/1.4 var(--font-num);letter-spacing:.04em;color:var(--muted)}
+h1{margin:4px 0 6px;font-size:22px;line-height:1.25;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{margin:0;color:var(--muted)}
+.lede b{color:var(--ink);font-weight:600}
+.stamp{margin:8px 0 0;font:12px/1.5 var(--font-num);color:var(--muted)}
+
+.search{position:relative}
+.searchrow{display:flex;gap:6px}
+.search input{flex:1;min-width:0;font:inherit;font-size:15px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink)}
+.search input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.search button{font:600 14px var(--font-ui);padding:0 14px;border:0;border-radius:10px;background:var(--ink);color:var(--panel);cursor:pointer}
+.search button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.results{position:absolute;z-index:50;left:0;right:0;top:calc(100% + 6px);margin:0;padding:6px;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgb(0 0 0 / .16);max-height:360px;overflow-y:auto}
+.results li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 10px;padding:8px;border-radius:8px;cursor:pointer}
+.results li[aria-selected="true"],.results li:hover{background:var(--soft)}
+.results .t{grid-row:span 2;align-self:start;font:600 11px/1.7 var(--font-ui);color:var(--muted);background:var(--soft);border-radius:5px;padding:0 6px;margin-top:2px}
+.results .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.results .s{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.results .empty{display:block;color:var(--muted);cursor:default}
+
+.legend{margin:0;padding:12px;list-style:none;display:grid;gap:8px;background:var(--soft);border-radius:10px}
+.legend li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:center}
+.sw{height:7px;border-radius:4px;box-shadow:0 0 0 2px #fff}
+.sw.ok{background:var(--ok)}.sw.edge{background:var(--edge)}.sw.no{background:var(--no)}
+.sw.dot{width:11px;height:11px;border-radius:50%;background:var(--ret);box-shadow:0 0 0 2px #fff;justify-self:center}
+.legend b{font-weight:600}
+.legend span{color:var(--muted);font-size:13px}
+.toggles{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px}
+.toggles label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.toggles input{accent-color:var(--accent);width:16px;height:16px}
+
+.card{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px;min-width:0}
+.card h2{margin:0;font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted)}
+.card p{margin:0}
+.chip{display:inline-flex;align-items:center;font:700 14px/1 var(--font-ui);padding:7px 12px;border-radius:999px;color:#fff}
+.chip.c2{background:var(--ok)}.chip.c1{background:var(--edge);color:#1c1300}.chip.c0{background:var(--no)}
+.chip.d50{background:var(--edge);color:#1c1300}.chip.d100{background:var(--ok)}
+.verdict{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.big{font:500 32px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.big small{font-size:14px;color:var(--muted);margin-left:2px}
+.where{font-weight:600}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:0}
+.kv dt{color:var(--muted);font-size:13px}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.why{font-size:13px;color:var(--muted)}
+.warn{font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid var(--edge);background:color-mix(in srgb,var(--edge) 10%,#fff)}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.links a{font-size:13px;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink);text-decoration:none}
+.links a:hover{background:var(--soft)}
+.near{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+.near li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;font-size:13px}
+.near .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.near .ad{grid-column:1;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.near .d{grid-row:1/span 2;grid-column:2;align-self:center;font-family:var(--font-num);color:var(--muted)}
+.hint{color:var(--muted)}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--soft)}
+.bar i{display:block;height:100%}
+.bar .b2{background:var(--ok)}.bar .b1{background:var(--edge)}.bar .b0{background:var(--no)}
+.barlegend{display:flex;flex-wrap:wrap;gap:4px 14px;font:12px/1.4 var(--font-num);color:var(--muted)}
+a{color:var(--accent)}
+button.linkish{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.nclist{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);max-height:220px;overflow-y:auto}
+details.notes{border-top:1px solid var(--line);padding-top:12px}
+details.notes summary{cursor:pointer;font-weight:600}
+details.notes ul{margin:10px 0 0;padding-left:18px;display:grid;gap:7px;color:var(--muted);font-size:13px}
+details.notes b{color:var(--ink);font-weight:600}
+footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+footer p{margin:0 0 4px}
+
+.status{position:absolute;z-index:20;left:50%;top:12px;transform:translateX(-50%);pointer-events:none;font:600 13px/1 var(--font-ui);padding:9px 14px;border-radius:999px;background:var(--ink);color:#fff;box-shadow:0 4px 14px rgb(0 0 0 / .2);white-space:nowrap}
+.layer{pointer-events:none}
+.layer canvas{display:block;pointer-events:none}
+.pin{width:18px;height:18px;border-radius:50%;background:#fff;border:4px solid var(--ink);box-shadow:0 2px 8px rgb(0 0 0 / .35);pointer-events:none}
+.ring{width:30px;height:30px;border-radius:50%;border:3px dashed var(--ink);background:rgb(255 255 255 / .35);pointer-events:none}
+.arealabel{font:700 12px/1.2 var(--font-ui);text-align:center;color:var(--ink);background:rgb(255 255 255 / .92);border:1px solid var(--line);border-radius:8px;padding:4px 7px;white-space:nowrap;pointer-events:none;box-shadow:0 1px 4px rgb(0 0 0 / .12)}
+.arealabel b{display:block;font:600 11px var(--font-num);color:var(--ok)}
+.arealabel b.d50{color:#b35f00}
+.arealabel b.miss{color:var(--no);font-size:10.5px}
+
+/* 키 설정 화면 */
+.setup{position:absolute;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:var(--bg);overflow-y:auto}
+.setup .box{max-width:520px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:12px;box-shadow:0 10px 30px rgb(0 0 0 / .08)}
+.setup h2{margin:0;font-size:18px}
+.setup ol{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--muted);font-size:13.5px}
+.setup ol b{color:var(--ink)}
+.setup code{font:12.5px var(--font-num);background:var(--soft);padding:1px 5px;border-radius:4px;color:var(--ink)}
+.setup .row{display:flex;gap:8px}
+.setup input{flex:1;min-width:0;font:14px var(--font-num);padding:10px 12px;border:1.5px solid var(--line);border-radius:10px}
+.setup input:focus{outline:none;border-color:var(--accent)}
+.setup button{font:600 14px var(--font-ui);padding:0 16px;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer}
+.setup .err{color:var(--no);font-size:13px;margin:0}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="panel" aria-label="판정과 지역 정보">
+    <header>
+      <p class="eyebrow">담배사업법 시행규칙 제7조의3 · 시군구 지정기준 규칙</p>
+      <h1>수도권 담배소매인 입지 지도</h1>
+      <p class="lede">서울·경기·인천 도로마다 <b>가장 가까운 기존 담배소매인까지 걸어서 몇 m인지</b> 계산해, 그 지역 규칙의 거리 기준과 비교했습니다. 주소를 검색하거나 지도를 누르면 판정이 나옵니다.</p>
+      <p class="stamp" id="stamp">데이터를 불러오는 중…</p>
+    </header>
+
+    <form class="search" id="searchform" role="search" autocomplete="off">
+      <label class="eyebrow" for="q">주소·장소·점포 찾기</label>
+      <div class="searchrow">
+        <input id="q" type="search" placeholder="예: 수원시청, 부평대로 100, GS25 ○○점" role="combobox" aria-expanded="false" aria-controls="results">
+        <button type="submit">찾기</button>
+      </div>
+      <ul id="results" class="results" role="listbox" hidden></ul>
+    </form>
+
+    <ul class="legend" aria-label="범례">
+      <li><i class="sw ok"></i><div><b>지정 가능</b> <span>기준거리보다 20m 이상 멂</span></div></li>
+      <li><i class="sw edge"></i><div><b>경계</b> <span>기준거리 ±20m · 현장 실측 필요</span></div></li>
+      <li><i class="sw no"></i><div><b>지정 불가</b> <span>기준거리보다 20m 이상 가까움</span></div></li>
+      <li><i class="sw dot"></i><div><b>영업 중인 소매인</b> <span>휴업 중인 곳은 표시하지 않음</span></div></li>
+    </ul>
+    <div class="toggles">
+      <label><input type="checkbox" id="tgRoads" checked> 도로 판정</label>
+      <label><input type="checkbox" id="tgShops" checked> 영업 중 소매인</label>
+    </div>
+
+    <section class="card" id="pick" aria-live="polite">
+      <h2>선택한 지점</h2>
+      <p class="hint">지도를 확대한 뒤 도로를 누르거나 위에서 주소를 검색하세요.</p>
+    </section>
+
+    <section class="card" id="area">
+      <h2>지역 규칙</h2>
+      <p class="hint">지도를 움직이면 가운데 지역의 규칙이 표시됩니다.</p>
+    </section>
+
+    <details class="notes">
+      <summary>계산 방식과 한계</summary>
+      <ul>
+        <li><b>거리</b>: OpenStreetMap 보행 가능 도로에서 모든 기존 소매인을 출발점으로 최단 보행거리를 구했습니다. 400m를 넘으면 "400m 이상"으로만 표시합니다.</li>
+        <li><b>휴업 중인 소매인</b>: 휴업해도 지정이 유지되므로 거리 계산에는 넣었고, 지도에는 영업 중인 곳만 점으로 표시합니다. 가장 가까운 소매인이 휴업 중이면 판정 카드에 따로 적습니다.</li>
+        <li><b>좌표</b>: 소매인 좌표(건물 기준점)를 가장 가까운 길과 40m 안의 다른 길 최대 3곳에 연결했습니다. 규칙은 외벽(지하·2층 이상은 1층 출입구) 사이를 재므로 실제와 수십 m 차이가 날 수 있어 기준 ±20m를 '경계'로 표시합니다.</li>
+        <li><b>보수적인 쪽</b>: 20m 안의 나란한 길은 바로 건너갈 수 있다고 보고, 도로 중심선 기준이라 횡단보도 우회도 빠집니다. 실제 보행거리는 지도보다 긴 경우가 많습니다.</li>
+        <li><b>구내소매인</b>: 역·대형점포·6층 이상 건물 안 등 거리 제한이 다른 소매인을 데이터에서 구분할 수 없어 모두 같은 소매인으로 취급했습니다.</li>
+        <li><b>반영하지 않은 요건</b>: 경과규정, 부적당한 장소, 건축물 용도·적법성, 매장면적 요건.</li>
+        <li><b>좌표 없는 소매인</b>: 인허가 데이터에 좌표가 없고 다른 방법으로도 위치를 찾지 못한 소매인은 계산에서 빠졌습니다. 지역 규칙 카드의 목록을 확인하세요.</li>
+        <li>이 지도는 후보지를 고르는 참고용입니다. 지정 여부는 관할 구청·시청·군청의 현장 실측과 심사로 결정됩니다.</li>
+      </ul>
+    </details>
+    <footer>
+      <p>출처: 행정안전부 지방행정 인허가 데이터(기타_담배소매업), 국가법령정보센터 자치법규, © OpenStreetMap contributors(ODbL), 행정동 경계 vuski/admdongkor, 지도 Kakao</p>
+    </footer>
+  </aside>
+
+  <div class="mapwrap">
+    <div id="map" role="application" aria-label="카카오 지도 위 담배소매인 지정 가능성"></div>
+    <div class="status" id="status" hidden></div>
+    <div class="setup" id="setup" hidden>
+      <div class="box">
+        <h2>카카오맵 키를 입력하세요</h2>
+        <ol>
+          <li><a href="https://developers.kakao.com/console/app" target="_blank" rel="noopener">카카오 개발자 콘솔</a>에서 <b>애플리케이션 추가</b>.</li>
+          <li><b>앱 키 → JavaScript 키</b>를 복사합니다.</li>
+          <li><b>플랫폼 → Web → 사이트 도메인</b>에 <code id="origin">http://localhost:8765</code>을 등록합니다.</li>
+          <li>콘솔에 <b>카카오맵</b> 사용 설정 항목이 있으면 켭니다.</li>
+          <li>아래에 키를 붙여 넣고 <b>지도 열기</b>를 누르세요. 키는 이 브라우저에만 저장됩니다.</li>
+        </ol>
+        <form class="row" id="keyform">
+          <input id="appkey" placeholder="JavaScript 키 (32자리)" autocomplete="off" spellcheck="false" aria-label="카카오 JavaScript 키">
+          <button type="submit">지도 열기</button>
+        </form>
+        <p class="err" id="keyerr" hidden></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- 좌표: WGS84 → GRS80 중부원점 TM (EPSG:5181) ---------- */
+const TM = (() => {
+  const a = 6378137, f = 1 / 298.257222101, e2 = 2 * f - f * f, ep2 = e2 / (1 - e2);
+  const lat0 = 38 * Math.PI / 180, lon0 = 127 * Math.PI / 180, x0 = 200000, y0 = 500000;
+  const e4 = e2 * e2, e6 = e4 * e2;
+  const M = (p) => a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * p - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * p)
+    + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * p) - (35 * e6 / 3072) * Math.sin(6 * p));
+  const M0 = M(lat0);
+  return (lat, lng) => {
+    const p = lat * Math.PI / 180, l = lng * Math.PI / 180;
+    const s = Math.sin(p), c = Math.cos(p), t = Math.tan(p);
+    const N = a / Math.sqrt(1 - e2 * s * s), T = t * t, C = ep2 * c * c, A = (l - lon0) * c;
+    const x = x0 + N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120);
+    const y = y0 + (M(p) - M0 + N * t * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24
+      + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
+    return [x, y];
+  };
+})();
+
+const CELL = 500, FAR = 999, NET_MAX_LEVEL = 6, SHOP_MAX_LEVEL = 5;
+const CLS = ["지정 불가", "경계", "지정 가능"];
+const S = { meta: null, areas: [], ret: null, nets: new Map(), loading: new Map(), stamp: 0,
+            colors: {}, pick: null, nocoords: null, show: { roads: true, shops: true } };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtKm = (v) => v >= 100 ? Math.round(v).toLocaleString("ko-KR") : v.toFixed(1);
+const hit = (a, b) => a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+const cellKey = (cx, cy) => cx * 100000 + cy;
+const getJSON = async (p) => { const r = await fetch(p); if (!r.ok) throw new Error(`${p}: ${r.status}`); return r.json(); };
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["ink", "ok", "edge", "no", "ret", "halo", "muted"]) S.colors[k] = cs.getPropertyValue("--" + k).trim();
+}
+
+/* ---------- 데이터 디코딩 ---------- */
+function decodeRings(rings) {
+  return rings.map((ring) => {
+    const out = new Float64Array(ring.length);
+    let x = 0, y = 0;
+    for (let k = 0; k < ring.length; k += 2) { x += ring[k]; y += ring[k + 1]; out[k] = x; out[k + 1] = y; }
+    return out;
+  });
+}
+function inRings(polys, x, y) {
+  for (const rings of polys) {
+    let inside = false;
+    for (const r of rings) for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+      const xi = r[i], yi = r[i + 1], xj = r[j], yj = r[j + 1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+function decodeNet(recs) {
+  let nV = 0;
+  for (const r of recs) nV += r[1].length / 3;
+  const n = recs.length;
+  const X = new Int32Array(nV), Y = new Int32Array(nV), D = new Int16Array(nV), SRC = new Int32Array(nV);
+  const start = new Int32Array(n + 1), cls = new Uint8Array(n), bb = new Int32Array(n * 4);
+  let v = 0;
+  for (let i = 0; i < n; i++) {
+    const [c, p, runs] = recs[i];
+    cls[i] = c; start[i] = v;
+    let x = 0, y = 0, d = 0, x0 = 2e9, y0 = 2e9, x1 = -2e9, y1 = -2e9;
+    for (let k = 0; k < p.length; k += 3) {
+      x += p[k]; y += p[k + 1]; d += p[k + 2];
+      X[v] = x; Y[v] = y; D[v] = d; v++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    SRC[start[i]] = -1;
+    let j = start[i] + 1;
+    for (let k = 0; k < runs.length; k += 2) for (let m = 0; m < runs[k]; m++) SRC[j++] = runs[k + 1];
+    bb[i * 4] = x0; bb[i * 4 + 1] = y0; bb[i * 4 + 2] = x1; bb[i * 4 + 3] = y1;
+  }
+  start[n] = v;
+  const grid = new Map();
+  for (let i = 0; i < n; i++) {
+    for (let cx = Math.floor(bb[i * 4] / CELL); cx <= Math.floor(bb[i * 4 + 2] / CELL); cx++)
+      for (let cy = Math.floor(bb[i * 4 + 1] / CELL); cy <= Math.floor(bb[i * 4 + 3] / CELL); cy++) {
+        const key = cellKey(cx, cy);
+        let arr = grid.get(key);
+        if (!arr) grid.set(key, (arr = []));
+        arr.push(i);
+      }
+  }
+  return { X, Y, D, SRC, start, cls, bb, grid, n, seen: new Int32Array(n) };
+}
+function indexRetailers(ret) {
+  ret.grid = new Map();
+  for (let i = 0; i < ret.x.length; i++) {
+    const key = cellKey(Math.floor(ret.x[i] / CELL), Math.floor(ret.y[i] / CELL));
+    let arr = ret.grid.get(key);
+    if (!arr) ret.grid.set(key, (arr = []));
+    arr.push(i);
+  }
+}
+function retailersNear(x, y, r, includeRest = true) {
+  const out = [];
+  for (let cx = Math.floor((x - r) / CELL); cx <= Math.floor((x + r) / CELL); cx++)
+    for (let cy = Math.floor((y - r) / CELL); cy <= Math.floor((y + r) / CELL); cy++) {
+      const arr = S.ret.grid.get(cellKey(cx, cy));
+      if (!arr) continue;
+      for (const i of arr) {
+        if (!includeRest && S.ret.st[i]) continue;
+        const d = Math.hypot(S.ret.x[i] - x, S.ret.y[i] - y);
+        if (d <= r) out.push([i, d]);
+      }
+    }
+  return out.sort((a, b) => a[1] - b[1]);
+}
+function areaAt(x, y) {
+  for (const a of S.areas) if (x >= a.bbox[0] && x <= a.bbox[2] && y >= a.bbox[1] && y <= a.bbox[3] && inRings(a.polys, x, y)) return a;
+  return null;
+}
+
+/* ---------- 카카오 지도 ---------- */
+let map, proj, geocoder, places, layerEl, canvas, layerOverlay, aff = null;
+let pinOverlay = null, ringOverlay = null, areaLabels = [];
+const MARGIN = 0.35;   // 화면 바깥까지 미리 그려 둘 비율(끌어서 옮길 때 빈 곳이 덜 보이게)
+
+function computeAffine() {
+  const el = $("map"), W = el.clientWidth, H = el.clientHeight;
+  const pts = [[0, 0], [W, 0], [0, H]].map(([u, v]) => {
+    const ll = proj.coordsFromContainerPoint(new kakao.maps.Point(u, v));
+    const [X, Y] = TM(ll.getLat(), ll.getLng());
+    return { u, v, X, Y };
+  });
+  const [p0, p1, p2] = pts;
+  const dX1 = p1.X - p0.X, dY1 = p1.Y - p0.Y, dX2 = p2.X - p0.X, dY2 = p2.Y - p0.Y;
+  const det = dX1 * dY2 - dX2 * dY1;
+  const solve = (k) => {
+    const d1 = p1[k] - p0[k], d2 = p2[k] - p0[k];
+    const A = (d1 * dY2 - d2 * dY1) / det, B = (dX1 * d2 - dX2 * d1) / det;
+    return [A, B, p0[k] - A * p0.X - B * p0.Y];
+  };
+  const [a, b, c] = solve("u"), [d, e, f] = solve("v");
+  const corners = [[0, 0], [W, 0], [0, H], [W, H]].map(([u, v]) => {
+    const ll = proj.coordsFromContainerPoint(new kakao.maps.Point(u, v)); return TM(ll.getLat(), ll.getLng());
+  });
+  const xs = corners.map((q) => q[0]), ys = corners.map((q) => q[1]);
+  const view = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  const pxPerM = Math.hypot(a, d);
+  return { a, b, c, d, e, f, W, H, view, pxPerM };
+}
+const toPx = (X, Y) => [aff.a * X + aff.b * Y + aff.c, aff.d * X + aff.e * Y + aff.f];
+const pxToLatLng = (u, v) => proj.coordsFromContainerPoint(new kakao.maps.Point(u, v));
+const xyToLatLng = (X, Y) => { const [u, v] = toPx(X, Y); return pxToLatLng(u, v); };
+
+function redraw() {
+  if (!map || !S.areas.length) return;
+  aff = computeAffine();
+  const level = map.getLevel();
+  const mx = Math.round(aff.W * MARGIN), my = Math.round(aff.H * MARGIN);
+  const CW = aff.W + 2 * mx, CH = aff.H + 2 * my;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = CW * dpr; canvas.height = CH * dpr;
+  canvas.style.width = CW + "px"; canvas.style.height = CH + "px";
+  layerOverlay.setPosition(pxToLatLng(-mx, -my));
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, mx * dpr, my * dpr);   // 이후 좌표는 지도 컨테이너 픽셀
+  ctx.clearRect(-mx, -my, CW, CH);
+  const padM = Math.max(mx, my) / aff.pxPerM;
+  const box = [aff.view[0] - padM, aff.view[1] - padM, aff.view[2] + padM, aff.view[3] + padM];
+  const C = S.colors;
+  const P = (X, Y) => toPx(X, Y);
+
+  // 시군구 경계
+  ctx.beginPath();
+  for (const a of S.areas) {
+    if (!hit(a.bbox, box)) continue;
+    for (const rings of a.polys) for (const r of rings) {
+      let [u, v] = P(r[0], r[1]); ctx.moveTo(u, v);
+      for (let i = 2; i < r.length; i += 2) { [u, v] = P(r[i], r[i + 1]); ctx.lineTo(u, v); }
+      ctx.closePath();
+    }
+  }
+  ctx.setLineDash(level >= 7 ? [] : [6, 4]);
+  ctx.strokeStyle = C.ink; ctx.globalAlpha = level >= 7 ? 0.55 : 0.4; ctx.lineWidth = level >= 7 ? 1.6 : 2;
+  ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+  // 도로 판정
+  if (level <= NET_MAX_LEVEL && S.show.roads) {
+    const lw = [0, 7, 6, 5, 4, 3, 2.2][level] || 2;
+    const stamp = ++S.stamp;
+    const lists = [[], [], []];
+    for (const a of S.areas) {
+      const net = S.nets.get(a.i);
+      if (!net || !hit(a.bbox, box)) continue;
+      for (let cx = Math.floor(box[0] / CELL); cx <= Math.floor(box[2] / CELL); cx++)
+        for (let cy = Math.floor(box[1] / CELL); cy <= Math.floor(box[3] / CELL); cy++) {
+          const arr = net.grid.get(cellKey(cx, cy));
+          if (!arr) continue;
+          for (const i of arr) {
+            if (net.seen[i] === stamp) continue;
+            net.seen[i] = stamp;
+            const b = net.bb;
+            if (b[i * 4] > box[2] || b[i * 4 + 2] < box[0] || b[i * 4 + 1] > box[3] || b[i * 4 + 3] < box[1]) continue;
+            lists[net.cls[i]].push(net, i);
+          }
+        }
+    }
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const trace = (list) => {
+      ctx.beginPath();
+      for (let q = 0; q < list.length; q += 2) {
+        const net = list[q], i = list[q + 1], s = net.start[i], e = net.start[i + 1];
+        let [u, v] = P(net.X[s], net.Y[s]); ctx.moveTo(u, v);
+        for (let k = s + 1; k < e; k++) { [u, v] = P(net.X[k], net.Y[k]); ctx.lineTo(u, v); }
+      }
+    };
+    // 흰 테두리 → 색 (불가 → 경계 → 가능 순으로 위에 쌓기)
+    for (const c of [0, 1, 2]) {
+      if (!lists[c].length) continue;
+      trace(lists[c]);
+      ctx.strokeStyle = C.halo; ctx.globalAlpha = 0.9; ctx.lineWidth = lw + 3; ctx.stroke();
+      ctx.strokeStyle = [C.no, C.edge, C.ok][c]; ctx.globalAlpha = c === 0 ? 0.75 : 0.95; ctx.lineWidth = c === 2 ? lw + 0.6 : lw; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // 영업 중 소매인
+  if (level <= SHOP_MAX_LEVEL && S.show.shops) {
+    const r = [0, 7, 6, 5, 4, 3][level] || 3;
+    ctx.beginPath();
+    for (let cx = Math.floor(box[0] / CELL); cx <= Math.floor(box[2] / CELL); cx++)
+      for (let cy = Math.floor(box[1] / CELL); cy <= Math.floor(box[3] / CELL); cy++) {
+        const arr = S.ret.grid.get(cellKey(cx, cy));
+        if (!arr) continue;
+        for (const i of arr) {
+          if (S.ret.st[i]) continue;
+          const [u, v] = P(S.ret.x[i], S.ret.y[i]);
+          ctx.moveTo(u + r, v); ctx.arc(u, v, r, 0, Math.PI * 2);
+        }
+      }
+    ctx.lineWidth = 2; ctx.strokeStyle = C.halo; ctx.stroke();
+    ctx.fillStyle = C.ret; ctx.fill();
+  }
+  canvas.style.visibility = "visible";
+  updateAreaLabels(level);
+}
+
+function updateAreaLabels(level) {
+  for (const o of areaLabels) o.setMap(null);
+  areaLabels = [];
+  if (level < 7 || level > 11) return;
+  for (const a of S.areas) {
+    if (!hit(a.bbox, aff.view)) continue;
+    if (level >= 10 && a.sido === "서울특별시") continue;
+    const el = document.createElement("div");
+    el.className = "arealabel";
+    el.innerHTML = `${esc(a.name)}<b class="${a.dist === 50 ? "d50" : ""}">${a.dist}m</b>${missRate(a) >= 0.05 ? `<b class="miss">좌표 누락 ${Math.round(missRate(a) * 100)}%</b>` : ""}`;
+    areaLabels.push(new kakao.maps.CustomOverlay({ position: xyToLatLng(a.label[0], a.label[1]), content: el, xAnchor: 0.5, yAnchor: 0.5, zIndex: 2, map }));
+  }
+}
+
+let redrawTimer = 0;
+function scheduleRedraw() { cancelAnimationFrame(redrawTimer); redrawTimer = requestAnimationFrame(redraw); }
+
+function ensureNets() {
+  if (!map || !S.areas.length) return;
+  const level = map.getLevel();
+  if (level > NET_MAX_LEVEL) { updateStatus(); return; }
+  const v = computeAffine().view;
+  const pad = (v[2] - v[0]) * 0.3;
+  const box = [v[0] - pad, v[1] - pad, v[2] + pad, v[3] + pad];
+  for (const a of S.areas) {
+    if (!a.size || S.nets.has(a.i) || S.loading.has(a.i) || !hit(a.bbox, box)) continue;
+    const p = getJSON(`data/net/${a.i}.json`).then((recs) => {
+      S.nets.set(a.i, decodeNet(recs));
+      S.loading.delete(a.i);
+      updateStatus(); scheduleRedraw();
+      if (S.pendingPick) { const args = S.pendingPick; S.pendingPick = null; pickAt(...args); }
+    }).catch((err) => { S.loading.delete(a.i); console.error(err); setStatus(`${a.name} 도로 데이터를 불러오지 못했습니다`); });
+    S.loading.set(a.i, p);
+  }
+  updateStatus();
+}
+function setStatus(t) { $("status").textContent = t; $("status").hidden = !t; }
+function updateStatus() {
+  if (!map) return;
+  if (map.getLevel() > NET_MAX_LEVEL) setStatus("확대하면 도로별 판정이 보입니다");
+  else if (S.loading.size) setStatus(`도로 데이터 불러오는 중 · ${S.loading.size}개 지역`);
+  else setStatus("");
+}
+
+/* ---------- 지점 판정 ---------- */
+function nearestSegment(x, y, maxM) {
+  let best = null;
+  const q = [x - maxM, y - maxM, x + maxM, y + maxM];
+  for (const a of S.areas) {
+    const net = S.nets.get(a.i);
+    if (!net || !hit(a.bbox, q)) continue;
+    const stamp = ++S.stamp;
+    for (let cx = Math.floor(q[0] / CELL); cx <= Math.floor(q[2] / CELL); cx++)
+      for (let cy = Math.floor(q[1] / CELL); cy <= Math.floor(q[3] / CELL); cy++) {
+        const arr = net.grid.get(cellKey(cx, cy));
+        if (!arr) continue;
+        for (const i of arr) {
+          if (net.seen[i] === stamp) continue;
+          net.seen[i] = stamp;
+          for (let v = net.start[i]; v < net.start[i + 1] - 1; v++) {
+            const ax = net.X[v], ay = net.Y[v], dx = net.X[v + 1] - ax, dy = net.Y[v + 1] - ay;
+            const L2 = dx * dx + dy * dy;
+            const t = L2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)) : 0;
+            const d = Math.hypot(ax + t * dx - x, ay + t * dy - y);
+            if (d <= maxM && (!best || d < best.d)) best = { a, net, i, v, t, d, px: ax + t * dx, py: ay + t * dy };
+          }
+        }
+      }
+  }
+  return best;
+}
+function walkDistance(s) {
+  const { net, v, t } = s, d0 = net.D[v], d1 = net.D[v + 1];
+  const seg = Math.hypot(net.X[v + 1] - net.X[v], net.Y[v + 1] - net.Y[v]);
+  if (d0 < FAR && d1 < FAR) return d0 + t * (d1 - d0);
+  if (d0 < FAR) return d0 + t * seg;
+  if (d1 < FAR) return d1 + (1 - t) * seg;
+  return Infinity;
+}
+function placeMarkers(pinXY, ringXY) {
+  if (pinOverlay) pinOverlay.setMap(null);
+  if (ringOverlay) ringOverlay.setMap(null);
+  pinOverlay = ringOverlay = null;
+  if (pinXY) { const el = document.createElement("div"); el.className = "pin"; pinOverlay = new kakao.maps.CustomOverlay({ position: xyToLatLng(...pinXY), content: el, xAnchor: 0.5, yAnchor: 0.5, zIndex: 6, map }); }
+  if (ringXY) { const el = document.createElement("div"); el.className = "ring"; ringOverlay = new kakao.maps.CustomOverlay({ position: xyToLatLng(...ringXY), content: el, xAnchor: 0.5, yAnchor: 0.5, zIndex: 5, map }); }
+}
+function retailerLine(i, d) {
+  const r = S.ret;
+  return `<li><span class="nm">${esc(r.name[i] || "(이름 없음)")}${r.st[i] ? " · 휴업 중" : ""}</span><span class="ad">${esc(r.addr[i])}</span><span class="d">${Math.round(d)} m</span></li>`;
+}
+function kakaoLinks(lat, lng, name) {
+  const nm = encodeURIComponent(name || "선택한 지점");
+  return `<div class="links"><a href="https://map.kakao.com/link/map/${nm},${lat.toFixed(6)},${lng.toFixed(6)}" target="_blank" rel="noopener">카카오맵에서 보기</a><a href="https://map.kakao.com/link/roadview/${lat.toFixed(6)},${lng.toFixed(6)}" target="_blank" rel="noopener">로드뷰</a></div>`;
+}
+
+function pickAt(x, y, label) {
+  aff = computeAffine();
+  const level = map.getLevel();
+  if (level > NET_MAX_LEVEL) { S.pendingPick = [x, y, label]; map.setLevel(3, { anchor: xyToLatLng(x, y) }); return; }
+  // 영업 중 소매인 점을 누른 경우
+  if (!label && S.show.shops && level <= SHOP_MAX_LEVEL) {
+    const tolM = 9 / aff.pxPerM;
+    const near = retailersNear(x, y, tolM, false);
+    if (near.length) { renderRetailer(near[0][0]); return; }
+  }
+  let s = nearestSegment(x, y, 18 / aff.pxPerM);
+  if (!s) s = nearestSegment(x, y, 80);
+  if (!s) {
+    if (S.loading.size) { S.pendingPick = [x, y, label]; return; }
+    renderPick(null, x, y, label); return;
+  }
+  renderPick(s, x, y, label);
+}
+
+function renderRetailer(i) {
+  const r = S.ret, a = S.areas[r.area[i]];
+  placeMarkers(null, [r.x[i], r.y[i]]);
+  $("pick").innerHTML = `
+    <h2>영업 중인 소매인</h2>
+    <p class="where">${esc(r.name[i] || "(이름 없음)")}</p>
+    <dl class="kv">
+      <dt>주소</dt><dd>${esc(r.addr[i])}</dd>
+      <dt>지정일</dt><dd class="num">${esc(r.date[i] || "—")}</dd>
+      ${a ? `<dt>규칙</dt><dd>${esc(a.name)} · 이 점포에서 걸어서 ${a.dist}m 안에는 새 일반소매인 지정이 어렵습니다.</dd>` : ""}
+    </dl>
+    ${kakaoLinks(r.lat[i], r.lon[i], r.name[i])}`;
+  if (a) renderArea(a, true);
+}
+
+function renderPick(s, x, y, label) {
+  const box = $("pick");
+  if (!s) {
+    placeMarkers([x, y], null);
+    box.innerHTML = `<h2>선택한 지점</h2><p class="hint">80m 안에 판정한 도로가 없습니다. 색이 칠해진 도로 가까이를 눌러 주세요.</p>`;
+    return;
+  }
+  const a = s.a, dist = a.dist, m = S.meta.margin, D = walkDistance(s), cls = s.net.cls[s.i];
+  const src = s.net.SRC[s.v + 1];
+  placeMarkers([s.px, s.py], src >= 0 && D < Infinity ? [S.ret.x[src], S.ret.y[src]] : null);
+  const ll = xyToLatLng(s.px, s.py);
+  const dTxt = D === Infinity || D >= 400 ? `400<small>m 이상</small>` : `${Math.round(D)}<small>m</small>`;
+  const why = cls === 2 ? `걸어서 ${dist}m 기준보다 ${m}m 이상 멉니다. 거리 요건은 충족할 가능성이 높습니다.`
+    : cls === 1 ? `보행거리가 ${dist - m}~${dist + m}m 사이라 좌표 오차에 따라 결과가 바뀔 수 있습니다. 관할 구청 실측이 필요합니다.`
+    : `보행거리가 ${dist - m}m보다 짧아 거리 요건을 충족하기 어렵습니다.`;
+  const near = retailersNear(s.px, s.py, 150).slice(0, 6);
+  const straight = near.length ? near[0][1] : Infinity;
+  const warn = cls >= 1 && straight < dist - m && D > straight * 2.5
+    ? `<p class="warn">직선으로 ${Math.round(straight)}m 거리에 소매인(${esc(S.ret.name[near[0][0]] || "이름 없음")}${S.ret.st[near[0][0]] ? ", 휴업 중" : ""})이 있습니다. 지하도·역사·건물 통로가 지도 데이터에 빠져 보행거리가 길게 계산됐을 수 있으니 현장에서 확인하세요.</p>` : "";
+  let srcHtml = "";
+  if (src >= 0 && D < Infinity) {
+    const sd = Math.hypot(S.ret.x[src] - s.px, S.ret.y[src] - s.py);
+    srcHtml = `<dt>가장 가까운 소매인</dt><dd>${esc(S.ret.name[src] || "(이름 없음)")}${S.ret.st[src] ? ` <b>· 휴업 중</b> <span class="hint">(지정 유지, 지도에는 표시 안 함)</span>` : ""}<br><span class="hint">${esc(S.ret.addr[src])}</span><br><span class="num hint">지정 ${esc(S.ret.date[src] || "—")} · 직선 ${Math.round(sd)} m</span></dd>`;
+  }
+  box.innerHTML = `
+    <h2>선택한 지점${label ? ` · ${esc(label)}` : ""}</h2>
+    <p class="where" id="pickaddr">주소 확인 중…</p>
+    <div class="verdict"><span class="chip c${cls}">${CLS[cls]}</span><span class="big">${dTxt}</span></div>
+    <p class="hint" style="margin-top:-4px">가장 가까운 기존 소매인까지 걸어서(추정)</p>
+    <p class="why">${why}</p>
+    ${warn}
+    ${cls === 2 && missRate(a) >= 0.05 ? `<p class="warn">이 지역은 소매인 ${Math.round(missRate(a) * 100)}%의 좌표가 없어 계산에서 빠졌습니다. 근처에 지도에 없는 소매인이 있을 수 있으니 아래 지역 카드의 목록을 확인하세요.</p>` : ""}
+    <dl class="kv"><dt>적용 규칙</dt><dd>${esc(a.name)} · 영업소 간 <span class="num">${dist} m</span> 이상</dd>${srcHtml}</dl>
+    ${kakaoLinks(ll.getLat(), ll.getLng(), label)}
+    <div><h2 style="margin-bottom:6px">주변 소매인 · 직선 150m 이내</h2>
+    ${near.length ? `<ul class="near">${near.map(([i, d]) => retailerLine(i, d)).join("")}</ul>` : `<p class="hint">없음</p>`}</div>`;
+  geocoder.coord2Address(ll.getLng(), ll.getLat(), (res, status) => {
+    const el = $("pickaddr");
+    if (!el) return;
+    if (status === kakao.maps.services.Status.OK && res[0]) {
+      const r = res[0];
+      el.textContent = (r.road_address && r.road_address.address_name) || (r.address && r.address.address_name) || "";
+    } else el.textContent = "";
+  });
+  renderArea(a, true);
+}
+
+/* ---------- 지역 카드 ---------- */
+const missRate = (a) => a.nc / Math.max(1, a.n + a.rest + a.nc);
+function missWarn(a) {
+  const r = missRate(a);
+  if (r < 0.05) return "";
+  return `<p class="warn">이 지역은 소매인 ${(a.n + a.rest + a.nc).toLocaleString("ko-KR")}곳 중 ${a.nc.toLocaleString("ko-KR")}곳(${Math.round(r * 100)}%)의 좌표가 없어 계산에서 빠졌습니다. 이 지역은 '가능'이 실제보다 넓게 보일 수 있습니다.</p>`;
+}
+let shownArea = null;
+function renderArea(a, force) {
+  if (!a || (a === shownArea && !force)) return;
+  shownArea = a;
+  const [k0, k1, k2] = a.km, tot = k0 + k1 + k2 || 1;
+  const pct = (v) => ((v / tot) * 100).toFixed(1);
+  const link = `https://www.law.go.kr/LSW/ordinInfoP.do?ordinSeq=${encodeURIComponent(a.mst)}`;
+  $("area").innerHTML = `
+    <h2>지역 규칙</h2>
+    <div class="verdict"><strong style="font-size:17px">${esc(a.sido.replace(/특별시|광역시/, ""))} ${esc(a.name)}</strong><span class="chip d${a.dist}">영업소 간 ${a.dist}m</span></div>
+    ${missWarn(a)}
+    <dl class="kv">
+      <dt>근거</dt><dd><a href="${link}" target="_blank" rel="noopener">${esc(a.rule)}</a></dd>
+      <dt>시행</dt><dd class="num">${esc(a.eff)}</dd>
+      <dt>측정</dt><dd>${esc(a.measure)}</dd>
+      <dt>소매인</dt><dd>영업 중 <span class="num">${a.n.toLocaleString("ko-KR")}</span>곳${a.rest ? ` · 휴업 <span class="num">${a.rest}</span>곳` : ""}${a.nc ? ` · 좌표 없음 <span class="num">${a.nc}</span>곳 <button class="linkish" id="ncbtn" type="button">목록</button>` : ""}</dd>
+    </dl>
+    <div>
+      <div class="bar" role="img" aria-label="도로 길이 비율: 가능 ${pct(k2)}%, 경계 ${pct(k1)}%, 불가 ${pct(k0)}%"><i class="b2" style="width:${pct(k2)}%"></i><i class="b1" style="width:${pct(k1)}%"></i><i class="b0" style="width:${pct(k0)}%"></i></div>
+      <div class="barlegend" style="margin-top:6px"><span>가능 ${fmtKm(k2)}km</span><span>경계 ${fmtKm(k1)}km</span><span>불가 ${fmtKm(k0)}km</span></div>
+    </div>
+    <div id="nclist"></div>`;
+  const btn = $("ncbtn");
+  if (btn) btn.addEventListener("click", () => showNoCoords(a));
+}
+async function showNoCoords(a) {
+  const box = $("nclist");
+  if (!S.nocoords) { box.innerHTML = `<p class="hint">불러오는 중…</p>`; S.nocoords = await getJSON("data/nocoords.json"); }
+  const rows = S.nocoords.filter((r) => r[2] === a.i);
+  box.innerHTML = `<h2 style="margin-bottom:6px">좌표가 없어 계산에서 빠진 소매인 ${rows.length}곳</h2><ol class="nclist">${rows.map((r) => `<li>${esc(r[0])}${r[3] ? " (휴업)" : ""} · ${esc(r[1])}</li>`).join("")}</ol>`;
+}
+
+/* ---------- 검색 ---------- */
+let results = [], activeIdx = -1, searchSeq = 0;
+const norm = (s) => String(s).replace(/\s+/g, "").toLowerCase();
+function localMatches(q) {
+  const nq = norm(q), out = [];
+  if (nq.length < 2) return out;
+  for (let i = 0; i < S.ret.x.length && out.length < 5; i++) {
+    if (S.ret.st[i] || S.ret.area[i] < 0) continue;
+    if (norm(S.ret.name[i]).includes(nq)) out.push({ t: "소매인", n: S.ret.name[i], s: S.ret.addr[i], lat: S.ret.lat[i], lng: S.ret.lon[i], r: i });
+  }
+  return out;
+}
+function runSearch(q) {
+  const seq = ++searchSeq;
+  q = q.trim();
+  if (!q) { showResults([]); return; }
+  const jobs = [
+    new Promise((res) => places.keywordSearch(q, (data, st) => res(st === kakao.maps.services.Status.OK
+      ? data.slice(0, 5).map((d) => ({ t: "장소", n: d.place_name, s: d.road_address_name || d.address_name, lat: +d.y, lng: +d.x })) : []), { size: 5 })),
+    new Promise((res) => geocoder.addressSearch(q, (data, st) => res(st === kakao.maps.services.Status.OK
+      ? data.slice(0, 3).map((d) => ({ t: "주소", n: (d.road_address && d.road_address.address_name) || d.address_name, s: d.address_name, lat: +d.y, lng: +d.x })) : []))),
+  ];
+  Promise.all(jobs).then(([pl, ad]) => { if (seq === searchSeq) showResults([...ad, ...pl, ...localMatches(q)]); });
+}
+function showResults(list) {
+  results = list; activeIdx = list.length ? 0 : -1;
+  const ul = $("results"), input = $("q");
+  if (!input.value.trim()) { ul.hidden = true; input.setAttribute("aria-expanded", "false"); return; }
+  ul.innerHTML = list.length
+    ? list.map((e, j) => `<li role="option" id="opt${j}" aria-selected="${j === activeIdx}" data-j="${j}"><span class="t">${e.t}</span><span class="n">${esc(e.n)}</span><span class="s">${esc(e.s)}</span></li>`).join("")
+    : `<li class="empty">찾는 결과가 없습니다. 도로명주소나 장소 이름으로 다시 찾아 보세요.</li>`;
+  ul.hidden = false; input.setAttribute("aria-expanded", "true");
+}
+function choose(e) {
+  if (!e) return;
+  $("results").hidden = true; $("q").setAttribute("aria-expanded", "false");
+  const ll = new kakao.maps.LatLng(e.lat, e.lng);
+  const [x, y] = TM(e.lat, e.lng);
+  S.pendingPick = [x, y, e.n];
+  map.setLevel(3);
+  map.setCenter(ll);
+  if (e.r !== undefined) { S.pendingPick = null; setTimeout(() => { aff = computeAffine(); renderRetailer(e.r); }, 350); }
+}
+
+/* ---------- 시작 ---------- */
+function getKey() {
+  if (window.KAKAO_APP_KEY) return window.KAKAO_APP_KEY;
+  try { return localStorage.getItem("kakaoAppKey") || ""; } catch { return ""; }
+}
+function showSetup(msg) {
+  $("setup").hidden = false;
+  $("stamp").textContent = "카카오 키를 넣으면 지도가 열립니다.";
+  $("origin").textContent = location.origin;
+  if (msg) { $("keyerr").textContent = msg; $("keyerr").hidden = false; }
+}
+$("keyform").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const k = $("appkey").value.trim();
+  if (!/^[0-9a-f]{32}$/i.test(k)) { $("keyerr").textContent = "JavaScript 키는 영문·숫자 32자리입니다. 다시 확인해 주세요."; $("keyerr").hidden = false; return; }
+  try { localStorage.setItem("kakaoAppKey", k); } catch { /* 저장이 막힌 브라우저면 이번만 사용 */ }
+  $("setup").hidden = true;
+  loadSdk(k);
+});
+
+function loadSdk(key) {
+  const s = document.createElement("script");
+  s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(key)}&libraries=services&autoload=false`;
+  s.onload = () => { if (window.kakao && kakao.maps) kakao.maps.load(initMap); else showSetup("카카오 지도 스크립트를 불러오지 못했습니다."); };
+  s.onerror = () => showSetup("카카오 지도 스크립트를 불러오지 못했습니다. 인터넷 연결과 키를 확인해 주세요.");
+  document.head.appendChild(s);
+}
+
+function initMap() {
+  readColors();
+  const el = $("map");
+  map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(37.5651, 126.9895), level: 4 });
+  map.setMaxLevel(12);
+  map.addControl(new kakao.maps.MapTypeControl(), kakao.maps.ControlPosition.TOPRIGHT);
+  map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+  proj = map.getProjection();
+  geocoder = new kakao.maps.services.Geocoder();
+  places = new kakao.maps.services.Places();
+  layerEl = document.createElement("div");
+  layerEl.className = "layer";
+  canvas = document.createElement("canvas");
+  layerEl.appendChild(canvas);
+  layerOverlay = new kakao.maps.CustomOverlay({ position: map.getCenter(), content: layerEl, xAnchor: 0, yAnchor: 0, zIndex: 1, map });
+
+  let tilesOk = false;
+  kakao.maps.event.addListener(map, "tilesloaded", () => { tilesOk = true; });
+  setTimeout(() => { if (!tilesOk) setStatus("지도가 안 보이면 키와 등록한 사이트 도메인을 확인하세요"); }, 9000);
+
+  kakao.maps.event.addListener(map, "zoom_start", () => { if (canvas) canvas.style.visibility = "hidden"; });
+  kakao.maps.event.addListener(map, "idle", () => {
+    ensureNets(); scheduleRedraw();
+    if (!S.areas.length) return;
+    const c = map.getCenter(), [x, y] = TM(c.getLat(), c.getLng());
+    if (!S.userPicked) renderArea(areaAt(x, y));
+    if (S.pendingPick && !S.loading.size) { const args = S.pendingPick; S.pendingPick = null; pickAt(...args); }
+  });
+  kakao.maps.event.addListener(map, "click", (e) => {
+    if (!S.areas.length) return;
+    aff = computeAffine();
+    const [x, y] = TM(e.latLng.getLat(), e.latLng.getLng());
+    S.userPicked = true;
+    pickAt(x, y, "");
+  });
+  window.addEventListener("resize", () => { map.relayout(); scheduleRedraw(); });
+
+  Promise.all([getJSON("data/meta.json"), getJSON("data/areas.json"), getJSON("data/retailers.json")])
+    .then(([meta, areas, ret]) => {
+      S.meta = meta;
+      S.areas = areas.map((a) => ({ ...a, polys: a.geom.map(decodeRings) }));
+      indexRetailers(ret); S.ret = ret;
+      const bs = meta.openBySido || {};
+      $("stamp").textContent = `인허가 기준 ${meta.localdata} · 도로망 OSM ${meta.osm} · 영업 중 ${meta.open.toLocaleString("ko-KR")}곳 (서울 ${(bs["서울특별시"] || 0).toLocaleString("ko-KR")} · 경기 ${(bs["경기도"] || 0).toLocaleString("ko-KR")} · 인천 ${(bs["인천광역시"] || 0).toLocaleString("ko-KR")})`;
+      const c = map.getCenter(), [x, y] = TM(c.getLat(), c.getLng());
+      renderArea(areaAt(x, y));
+      S.pendingPick = [x, y, "예시: 지도 가운데"];
+      ensureNets(); scheduleRedraw();
+    })
+    .catch((err) => { console.error(err); $("stamp").textContent = "판정 데이터를 불러오지 못했습니다. 페이지를 새로고침해 주세요."; });
+
+  const q = $("q");
+  let debounce = 0;
+  q.addEventListener("input", () => { clearTimeout(debounce); debounce = setTimeout(() => runSearch(q.value), 280); });
+  $("searchform").addEventListener("submit", (ev) => { ev.preventDefault(); if (results.length && !$("results").hidden) choose(results[Math.max(activeIdx, 0)]); else runSearch(q.value); });
+  q.addEventListener("keydown", (ev) => {
+    const ul = $("results");
+    if (ul.hidden || !results.length) return;
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      ev.preventDefault();
+      activeIdx = (activeIdx + (ev.key === "ArrowDown" ? 1 : -1) + results.length) % results.length;
+      ul.querySelectorAll("li").forEach((li, j) => li.setAttribute("aria-selected", String(j === activeIdx)));
+      q.setAttribute("aria-activedescendant", "opt" + activeIdx);
+    } else if (ev.key === "Escape") { ul.hidden = true; q.setAttribute("aria-expanded", "false"); }
+  });
+  $("results").addEventListener("mousedown", (ev) => { const li = ev.target.closest("li[data-j]"); if (li) { ev.preventDefault(); choose(results[+li.dataset.j]); } });
+  q.addEventListener("blur", () => setTimeout(() => { $("results").hidden = true; q.setAttribute("aria-expanded", "false"); }, 150));
+  $("tgRoads").addEventListener("change", (e) => { S.show.roads = e.target.checked; scheduleRedraw(); });
+  $("tgShops").addEventListener("change", (e) => { S.show.shops = e.target.checked; scheduleRedraw(); });
+}
+
+const key = getKey();
+if (key) loadSdk(key); else showSetup("");
+})();
+</script>
+</body>
+</html>

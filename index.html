@@ -42,7 +42,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 /* 지도 */
 .mapwrap{position:relative;flex:1;min-height:0}
 #map{position:absolute;inset:0}
-.layer{pointer-events:none}.layer canvas{display:block;pointer-events:none}
+.layer{position:relative;width:0;height:0;overflow:visible;pointer-events:none}
+.layer canvas{position:absolute;display:block;pointer-events:none}
 
 /* 범례 */
 #legend{position:absolute;z-index:20;left:10px;top:10px;background:var(--panel);border-radius:12px;box-shadow:0 4px 16px rgb(0 0 0 / .18);width:232px;overflow:hidden}
@@ -124,6 +125,8 @@ details.more > div{margin-top:10px;display:grid;gap:8px}
 a{color:var(--brand)}
 
 /* 지도 위 표시 */
+/* 카카오 오버레이 기준점은 왼쪽 위(0,0)로 두고 CSS로 가운데 맞춤 */
+.pin,.ring,.me,.arealabel{transform:translate(-50%,-50%)}
 .pin{width:20px;height:20px;border-radius:50%;background:#fff;border:5px solid var(--bar);box-shadow:0 2px 8px rgb(0 0 0 / .4);pointer-events:none}
 .ring{width:32px;height:32px;border-radius:50%;border:3px dashed var(--bar);background:rgb(255 255 255 / .35);pointer-events:none}
 .me{width:18px;height:18px;border-radius:50%;background:#1e88e5;border:3px solid #fff;box-shadow:0 0 0 6px rgb(30 136 229 / .25);pointer-events:none}
@@ -382,7 +385,9 @@ function redraw() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = CW * dpr; canvas.height = CH * dpr;
   canvas.style.width = CW + "px"; canvas.style.height = CH + "px";
-  // 카카오는 기준점이 화면 밖인 오버레이를 그리지 않으므로, 캔버스 가운데를 화면 가운데에 맞춘다
+  // 카카오는 기준점이 화면 밖인 오버레이를 그리지 않으므로 기준점은 화면 가운데에 두고,
+  // 캔버스를 그만큼 왼쪽 위로 옮겨 캔버스 (0,0) = 지도 컨테이너 (-mx,-my) 가 되게 한다
+  canvas.style.left = -(aff.W / 2 + mx) + "px"; canvas.style.top = -(aff.H / 2 + my) + "px";
   layerOverlay.setPosition(pxToLatLng(aff.W / 2, aff.H / 2));
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, mx * dpr, my * dpr);
@@ -475,7 +480,7 @@ function updateAreaLabels(level) {
     el.className = "arealabel";
     const mr = missRate(a);
     el.innerHTML = `${esc(a.name)}<b class="${a.dist === 50 ? "d50" : ""}">기준 ${a.dist}m</b>${mr >= 0.05 ? `<b class="miss">좌표 누락 ${Math.round(mr * 100)}%</b>` : ""}`;
-    areaLabels.push(new kakao.maps.CustomOverlay({ position: xyToLatLng(a.label[0], a.label[1]), content: el, xAnchor: 0.5, yAnchor: 0.5, zIndex: 2, map }));
+    areaLabels.push(new kakao.maps.CustomOverlay({ position: xyToLatLng(a.label[0], a.label[1]), content: el, xAnchor: 0, yAnchor: 0, zIndex: 2, map }));
   }
 }
 let raf = 0;
@@ -545,7 +550,7 @@ function placeMarkers(pinXY, ringXY) {
   if (pinOverlay) pinOverlay.setMap(null);
   if (ringOverlay) ringOverlay.setMap(null);
   pinOverlay = ringOverlay = null;
-  const mk = (cls, xy, z) => { const el = document.createElement("div"); el.className = cls; return new kakao.maps.CustomOverlay({ position: xyToLatLng(...xy), content: el, xAnchor: 0.5, yAnchor: 0.5, zIndex: z, map }); };
+  const mk = (cls, xy, z) => { const el = document.createElement("div"); el.className = cls; return new kakao.maps.CustomOverlay({ position: xyToLatLng(...xy), content: el, xAnchor: 0, yAnchor: 0, zIndex: z, map }); };
   if (pinXY) pinOverlay = mk("pin", pinXY, 6);
   if (ringXY) ringOverlay = mk("ring", ringXY, 5);
 }
@@ -738,7 +743,7 @@ function locateMe() {
     const ll = new kakao.maps.LatLng(p.coords.latitude, p.coords.longitude);
     if (meOverlay) meOverlay.setMap(null);
     const el = document.createElement("div"); el.className = "me";
-    meOverlay = new kakao.maps.CustomOverlay({ position: ll, content: el, xAnchor: 0.5, yAnchor: 0.5, zIndex: 7, map });
+    meOverlay = new kakao.maps.CustomOverlay({ position: ll, content: el, xAnchor: 0, yAnchor: 0, zIndex: 7, map });
     const [x, y] = TM(p.coords.latitude, p.coords.longitude);
     S.userPicked = true;
     S.pendingPick = [x, y, "내 위치"];
@@ -781,7 +786,7 @@ function initMap() {
   places = new kakao.maps.services.Places();
   const layerEl = document.createElement("div"); layerEl.className = "layer";
   canvas = document.createElement("canvas"); layerEl.appendChild(canvas);
-  layerOverlay = new kakao.maps.CustomOverlay({ position: map.getCenter(), content: layerEl, xAnchor: 0.5, yAnchor: 0.5, zIndex: 1, map });
+  layerOverlay = new kakao.maps.CustomOverlay({ position: map.getCenter(), content: layerEl, xAnchor: 0, yAnchor: 0, zIndex: 1, map });
 
   let tilesOk = false;
   kakao.maps.event.addListener(map, "tilesloaded", () => { tilesOk = true; });

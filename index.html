@@ -11,6 +11,8 @@
   --bar:#1a252f; --bar-ink:#ffffff; --bar-muted:#aab4bd; --brand:#8e44ad; --brand-ink:#ffffff;
   --panel:#ffffff; --ink:#1a252f; --muted:#5f6b75; --line:#e3e7ea; --soft:#f3f5f7;
   --ok:#2563eb; --edge:#f59f00; --no:#e03131; --ret:#1a252f; --halo:#ffffff;
+  /* 소매인 종류(깃발): 일반 · 구내 · 임시·특례 · 종류 미상 — 도로 색(파랑·주황·빨강)과 겹치지 않게 */
+  --k0:#2b8a3e; --k1:#7048e8; --k2:#e64980; --k3:#5c6670;
   --font:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   color-scheme:light;
 }
@@ -35,6 +37,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 #results li[aria-selected="true"],#results li:hover{background:var(--soft)}
 #results .t{grid-row:span 2;align-self:start;font-size:11px;font-weight:700;color:#fff;background:var(--muted);border-radius:5px;padding:1px 6px;margin-top:2px}
 #results .t.place{background:var(--brand)}#results .t.addr{background:#2c3e50}#results .t.shop{background:var(--ret)}
+#results .t.k0{background:var(--k0)}#results .t.k1{background:var(--k1)}#results .t.k2{background:var(--k2)}#results .t.k3{background:var(--k3)}
 #results .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #results .s{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #results .empty{display:block;color:var(--muted);cursor:default}
@@ -57,10 +60,17 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 .lg span{display:block;color:var(--muted);font-size:11.5px;line-height:1.35}
 .sw{height:8px;border-radius:4px;box-shadow:0 0 0 2px #fff,0 0 0 3px var(--line)}
 .sw.ok{background:var(--ok)}.sw.edge{background:var(--edge)}.sw.no{background:var(--no)}
-.sw.dot{width:12px;height:12px;border-radius:50%;background:var(--ret);justify-self:center}
 .tg{display:flex;gap:12px;font-size:12.5px;border-top:1px solid var(--line);padding-top:8px}
 .tg label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
-.tg input{width:16px;height:16px;accent-color:var(--brand)}
+.tg input,.kl input{width:16px;height:16px;accent-color:var(--brand)}
+.lgh{font-size:12px;font-weight:700;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.kl{display:grid;grid-template-columns:18px 20px minmax(0,1fr) auto;align-items:center;gap:6px;font-size:12.5px;cursor:pointer}
+.kl b{font-weight:700}
+.kl small{display:block;color:var(--muted);font-size:11px;line-height:1.3}
+.kl .c{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11.5px}
+.flag{display:block;width:20px;height:22px}
+.kb{display:inline-block;font-size:11px;font-weight:700;color:#fff;border-radius:5px;padding:0 6px;margin-right:5px;vertical-align:1px;white-space:nowrap}
+.kb.k0{background:var(--k0)}.kb.k1{background:var(--k1)}.kb.k2{background:var(--k2)}.kb.k3{background:var(--k3)}
 
 /* 안내 알약, 배지 */
 #hint{position:absolute;z-index:15;left:50%;top:12px;transform:translateX(-50%);background:var(--bar);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;border-radius:999px;box-shadow:0 4px 14px rgb(0 0 0 / .25);white-space:nowrap;pointer-events:none}
@@ -82,6 +92,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 .grip{width:42px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 0}
 .sheethead{padding:14px 16px 12px;color:#fff;position:relative}
 .sheethead.c2{background:var(--ok)}.sheethead.c1{background:var(--edge);color:#241800}.sheethead.c0{background:var(--no)}.sheethead.shop{background:var(--bar)}.sheethead.none{background:#566573}
+.sheethead.k0{background:var(--k0)}.sheethead.k1{background:var(--k1)}.sheethead.k2{background:var(--k2)}.sheethead.k3{background:var(--k3)}
 .sheethead .lbl{font-size:12px;font-weight:700;opacity:.85}
 .sheethead .verdict{font-size:22px;font-weight:800;letter-spacing:-.01em;margin-top:2px}
 .sheethead .sub{font-size:13px;margin-top:4px;opacity:.95}
@@ -152,6 +163,9 @@ a{color:var(--brand)}
 <script src="config.js"></script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="flagIcon" viewBox="0 0 20 22"><path d="M4 2v18" stroke="#1a252f" stroke-width="1.8" stroke-linecap="round"/><path d="M4.6 2.2h12.4l-3 4.1 3 4.1H4.6z" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/><circle cx="4" cy="20" r="1.8" fill="#1a252f"/></symbol>
+</defs></svg>
 <header id="topbar">
   <h1>담배소매인 입지 지도<small>서울·경기·인천 · 보행거리 기준</small></h1>
   <form class="searchwrap" id="searchform" role="search" autocomplete="off">
@@ -167,13 +181,17 @@ a{color:var(--brand)}
   <div id="map" role="application" aria-label="카카오 지도 위 담배소매인 지정 가능성"></div>
 
   <section id="legend" data-open="true" aria-label="범례">
-    <button id="legendBtn" type="button" aria-expanded="true"><span>도로 색 보는 법</span><span class="arr">▾</span></button>
+    <button id="legendBtn" type="button" aria-expanded="true"><span>범례 · 도로 색과 깃발</span><span class="arr">▾</span></button>
     <div id="legendBody">
       <div class="lg"><i class="sw ok"></i><div><b>지정 가능성 높음</b><span>기존 소매인까지 걸어서 기준보다 20m 이상 멂</span></div></div>
       <div class="lg"><i class="sw edge"></i><div><b>현장 실측 필요</b><span>기준거리 ±20m 안</span></div></div>
       <div class="lg"><i class="sw no"></i><div><b>지정 어려움</b><span>기준보다 20m 이상 가까움</span></div></div>
-      <div class="lg"><i class="sw dot"></i><div><b>영업 중인 소매인</b><span>휴업 중인 곳은 표시 안 함</span></div></div>
-      <div class="tg"><label><input type="checkbox" id="tgRoads" checked> 도로 색</label><label><input type="checkbox" id="tgShops" checked> 소매인 점</label></div>
+      <p class="lgh">지정된 소매인 (영업 중, 깃발)</p>
+      <label class="kl"><input type="checkbox" data-kind="0" checked><svg class="flag" aria-hidden="true"><use href="#flagIcon" style="fill:var(--k0)"/></svg><span><b>일반소매인</b><small>거리기준으로 지정된 점포</small></span><span class="c" id="kc0"></span></label>
+      <label class="kl"><input type="checkbox" data-kind="1" checked><svg class="flag" aria-hidden="true"><use href="#flagIcon" style="fill:var(--k1)"/></svg><span><b>구내소매인</b><small>역·대형점포·큰 건물 안</small></span><span class="c" id="kc1"></span></label>
+      <label class="kl"><input type="checkbox" data-kind="2" checked><svg class="flag" aria-hidden="true"><use href="#flagIcon" style="fill:var(--k2)"/></svg><span><b>임시·특례소매인</b><small>2026 법 개정 특례(거리 유예 ~2028.4.24)</small></span><span class="c" id="kc2"></span></label>
+      <label class="kl"><input type="checkbox" data-kind="3" checked><svg class="flag" aria-hidden="true"><use href="#flagIcon" style="fill:var(--k3)"/></svg><span><b>종류 미상</b><small>2009년 이전 지정 등</small></span><span class="c" id="kc3"></span></label>
+      <div class="tg"><label><input type="checkbox" id="tgRoads" checked> 도로 색</label><label><input type="checkbox" id="tgShops" checked> 소매인 깃발</label></div>
     </div>
   </section>
 
@@ -193,13 +211,21 @@ a{color:var(--brand)}
     <ol>
       <li>지도를 확대하면 도로가 <b style="color:var(--ok)">파랑</b>·<b style="color:#b26a00">주황</b>·<b style="color:var(--no)">빨강</b>으로 칠해집니다.</li>
       <li>색은 <b>그 자리에서 가장 가까운 기존 담배소매인까지 걸어서 몇 m인지</b>를 그 지역 규칙의 거리(50m 또는 100m)와 비교한 결과입니다.</li>
-      <li>도로를 누르거나 위에서 주소를 검색하면 판정과 거리가 크게 나옵니다. 로드뷰로 현장도 볼 수 있습니다.</li>
+      <li>지정된 소매인은 깃발로 보이고, 종류에 따라 색이 다릅니다: <b style="color:var(--k0)">일반</b>·<b style="color:var(--k1)">구내</b>·<b style="color:var(--k2)">임시·특례</b>·<b style="color:var(--k3)">종류 미상</b>. 범례에서 종류별로 켜고 끌 수 있어요.</li>
+      <li>도로나 깃발을 누르거나 위에서 주소를 검색하면 판정과 거리가 크게 나옵니다. 로드뷰로 현장도 볼 수 있습니다.</li>
     </ol>
+    <h3>소매인 종류와 거리 반영</h3>
+    <ul>
+      <li><b>일반소매인</b>(담배사업법 시행규칙 제7조의3제2항)과 <b>종류 미상</b>(2009년 이전 자료 등, 대부분 일반)은 지역 기준거리를 그대로 적용합니다.</li>
+      <li><b>구내소매인</b>(같은 조 제3항: 역·대형점포·큰 건물 안)은 지역 규칙에 따라 다르게 반영합니다. 일반↔구내 거리제한이 없는 지역은 빼고, 50m 등 따로 정한 지역은 그 거리로, 같은 거리인 지역은 같게 봅니다. 규칙에 관계가 적혀 있지 않은 지역은 구내소매인만 가까운 곳을 '현장 실측 필요'로 표시합니다.</li>
+      <li><b>임시·특례소매인</b>: 2026.4.24 시행된 담배사업법(법률 제21216호) 부칙 제3조로, 시행 전부터 합성니코틴 담배 등을 팔던 곳이 거리기준을 2028.4.24까지 적용받지 않고 지정됐습니다(대부분 전자담배 매장). 지금은 지정된 소매인이라 거리 계산에 넣었습니다. 2028.4.24에 거리기준을 채우지 못하면 지정이 취소된 것으로 봅니다. 기한을 정한 임시 지정(공사장 등)은 현재 영업 중인 곳이 없습니다.</li>
+      <li>인허가 데이터에 특례 종류가 따로 없어, '2009년 이전 자료'로 분류됐는데 지정일이 2025.12.23~2026.7.31인 곳과 상호에 '(임시)'가 붙은 곳을 특례로 추정했습니다.</li>
+    </ul>
     <h3>알아 둘 점</h3>
     <ul>
       <li>OpenStreetMap 도로망으로 계산한 추정치입니다. 규칙은 외벽(지하·2층 이상은 1층 출입구) 사이를 재므로 수십 m 차이가 날 수 있어 기준 ±20m는 '현장 실측 필요'로 표시합니다.</li>
-      <li>휴업 중인 소매인도 지정이 유지되므로 거리 계산에는 들어 있습니다(지도에는 점으로 안 보임).</li>
-      <li>역·대형점포·6층 이상 건물 안 구내소매인, 경과규정, 부적당한 장소, 건축물 용도 요건은 반영하지 않았습니다.</li>
+      <li>휴업 중인 소매인도 지정이 유지되므로 거리 계산에는 들어 있습니다(지도에는 깃발로 안 보임).</li>
+      <li>경과규정(폐업 점포 자리 재지정·위치변경 때 종전 거리 적용), 부적당한 장소, 건축물 용도 요건은 판정에 반영하지 않고 지역 카드에만 적었습니다.</li>
       <li>인허가 데이터에 좌표가 없어 계산에서 빠진 소매인이 있습니다. 많이 빠진 지역은 카드에 경고가 나옵니다.</li>
       <li>최종 지정 여부는 관할 구청·시청·군청의 현장 실측과 심사로 결정됩니다.</li>
     </ul>
@@ -248,8 +274,12 @@ const TM = (() => {
 
 const CELL = 500, FAR = 999, NET_MAX_LEVEL = 6, SHOP_MAX_LEVEL = 5;
 const VERDICT = ["지정 어려움", "현장 실측 필요", "지정 가능성 높음"];
+// 소매인 종류 (retailers.json kinds 순서와 같음)
+const KIND = ["일반소매인", "구내소매인", "임시·특례소매인", "종류 미상"];
+const KIND_SHORT = ["일반", "구내", "임시·특례", "미상"];
+const K_GENERAL = 0, K_GUNAE = 1, K_TEMP = 2, K_UNKNOWN = 3;
 const S = { meta: null, areas: [], ret: null, nets: new Map(), loading: new Map(), stamp: 0, colors: {},
-            nocoords: null, show: { roads: true, shops: true }, pendingPick: null, userPicked: false };
+            nocoords: null, show: { roads: true, shops: true, kinds: [true, true, true, true] }, pendingPick: null, userPicked: false };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n) => Math.round(n).toLocaleString("ko-KR");
@@ -259,7 +289,26 @@ const cellKey = (cx, cy) => cx * 100000 + cy;
 const getJSON = async (p) => { const r = await fetch(p); if (!r.ok) throw new Error(`${p}: ${r.status}`); return r.json(); };
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
-  for (const k of ["ink", "ok", "edge", "no", "ret", "halo", "bar"]) S.colors[k] = cs.getPropertyValue("--" + k).trim();
+  for (const k of ["ink", "ok", "edge", "no", "ret", "halo", "bar", "k0", "k1", "k2", "k3"]) S.colors[k] = cs.getPropertyValue("--" + k).trim();
+}
+const kindOf = (i) => (S.ret.kind ? S.ret.kind[i] : K_UNKNOWN);
+const kindBadge = (i) => `<span class="kb k${kindOf(i)}">${KIND_SHORT[kindOf(i)]}</span>`;
+/* 일반소매인을 새로 지정할 때 이 지역 규칙상 구내소매인과 지켜야 하는 거리 (null = 제한 없음, NaN = 규칙에 없음) */
+function gunaeLimit(a) {
+  if (!a) return null;
+  if (a.gm === "same") return a.dist;
+  if (a.gm === "value") return a.gmM;
+  if (a.gm === "unclear") return NaN;
+  return null;
+}
+/* 이 소매인 때문에 새 일반소매인 지정이 어려운 보행거리(그 지역 규칙 기준) */
+function blockText(i, a) {
+  if (!a) return "";
+  if (kindOf(i) !== K_GUNAE) return `이 점포에서 걸어서 ${a.dist}m 안은 새 지정이 어려워요`;
+  const g = gunaeLimit(a);
+  if (g === null) return "이 지역은 구내소매인과 일반소매인 사이 거리제한이 없어요";
+  if (Number.isNaN(g)) return "규칙에 일반소매인과의 거리 관계가 없어 구청 확인이 필요해요";
+  return `이 점포에서 걸어서 ${g}m 안은 새 일반소매인 지정이 어려워요`;
 }
 
 /* ---------- 데이터 디코딩 ---------- */
@@ -448,25 +497,82 @@ function redraw() {
     ctx.globalAlpha = 1;
   }
 
-  // 영업 중 소매인
+  // 영업 중 소매인: 확대하면 종류별 색 깃발(깃대 아래 끝 = 점포 위치), 레벨 5는 색 점
   if (level <= SHOP_MAX_LEVEL && S.show.shops) {
-    const r = [0, 8, 7, 6, 4.6, 3.4][level] || 3;
-    ctx.beginPath();
-    for (let cx = Math.floor(box[0] / CELL); cx <= Math.floor(box[2] / CELL); cx++)
-      for (let cy = Math.floor(box[1] / CELL); cy <= Math.floor(box[3] / CELL); cy++) {
-        const arr = S.ret.grid.get(cellKey(cx, cy));
-        if (!arr) continue;
-        for (const i of arr) {
-          if (S.ret.st[i]) continue;
-          const [u, v] = P(S.ret.x[i], S.ret.y[i]);
-          ctx.moveTo(u + r, v); ctx.arc(u, v, r, 0, Math.PI * 2);
-        }
+    const vis = visibleShops(box);
+    const F = flagGeom(level);
+    if (!F) {
+      const r = 3.6;
+      for (const k of [K_UNKNOWN, K_GENERAL, K_GUNAE, K_TEMP]) {
+        ctx.beginPath();
+        for (const [i, u, v] of vis) if (kindOf(i) === k) { ctx.moveTo(u + r, v); ctx.arc(u, v, r, 0, Math.PI * 2); }
+        ctx.lineWidth = 2; ctx.strokeStyle = C.halo; ctx.stroke();
+        ctx.fillStyle = C["k" + k]; ctx.fill();
       }
-    ctx.lineWidth = 2.2; ctx.strokeStyle = C.halo; ctx.stroke();
-    ctx.fillStyle = C.ret; ctx.fill();
+    } else {
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.beginPath();
+      for (const [, u, v] of vis) { ctx.moveTo(u, v); ctx.lineTo(u, v - F.H); }
+      ctx.strokeStyle = C.halo; ctx.lineWidth = 3.6 * F.s; ctx.stroke();
+      ctx.strokeStyle = C.bar; ctx.lineWidth = 1.7 * F.s; ctx.stroke();
+      for (const k of [K_UNKNOWN, K_GENERAL, K_GUNAE, K_TEMP]) {
+        ctx.beginPath();
+        for (const [i, u, v] of vis) {
+          if (kindOf(i) !== k) continue;
+          const t = v - F.H, x0 = u + 0.6 * F.s;
+          ctx.moveTo(x0, t); ctx.lineTo(u + F.W, t); ctx.lineTo(u + F.W - F.N, t + F.FH / 2);
+          ctx.lineTo(u + F.W, t + F.FH); ctx.lineTo(x0, t + F.FH); ctx.closePath();
+        }
+        ctx.fillStyle = C["k" + k]; ctx.fill();
+        ctx.strokeStyle = C.halo; ctx.lineWidth = 1.3; ctx.stroke();
+      }
+      ctx.beginPath();
+      for (const [, u, v] of vis) { ctx.moveTo(u + 2.2 * F.s, v); ctx.arc(u, v, 2.2 * F.s, 0, Math.PI * 2); }
+      ctx.fillStyle = C.bar; ctx.fill();
+    }
   }
   canvas.style.visibility = "visible";
   updateAreaLabels(level);
+}
+/* 깃발 크기 (레벨 5 이상은 점) */
+function flagGeom(level) {
+  const s = [0, 1.5, 1.35, 1.2, 1][level];
+  return s ? { s, H: 20 * s, W: 13 * s, FH: 8.5 * s, N: 3 * s } : null;
+}
+/* 화면 안의 영업 중·표시 켠 종류 소매인 [번호, 화면 x, 화면 y] (아래쪽이 나중에 그려지도록 y순) */
+function visibleShops(box) {
+  const out = [];
+  for (let cx = Math.floor(box[0] / CELL); cx <= Math.floor(box[2] / CELL); cx++)
+    for (let cy = Math.floor(box[1] / CELL); cy <= Math.floor(box[3] / CELL); cy++) {
+      const arr = S.ret.grid.get(cellKey(cx, cy));
+      if (!arr) continue;
+      for (const i of arr) {
+        if (S.ret.st[i] || !S.show.kinds[kindOf(i)]) continue;
+        const [u, v] = toPx(S.ret.x[i], S.ret.y[i]);
+        out.push([i, u, v]);
+      }
+    }
+  return out.sort((p, q) => p[2] - q[2]);
+}
+/* 누른 화면 좌표(cu, cv)에 있는 깃발(또는 점)의 소매인 번호, 없으면 -1 */
+function shopAtPx(x, y) {
+  const level = map.getLevel();
+  if (!S.show.shops || level > SHOP_MAX_LEVEL) return -1;
+  const [cu, cv] = toPx(x, y), F = flagGeom(level);
+  const reach = (F ? F.H + 6 : 12) / aff.pxPerM;
+  let best = -1, bestV = -Infinity, bestD = Infinity;
+  for (const [i] of retailersNear(x, y, reach, false)) {
+    if (!S.show.kinds[kindOf(i)]) continue;
+    const [u, v] = toPx(S.ret.x[i], S.ret.y[i]);
+    if (F) {
+      const inFlag = cu >= u - 4 && cu <= u + F.W + 3 && cv >= v - F.H - 3 && cv <= v + 4;
+      if (inFlag && v > bestV) { best = i; bestV = v; }
+    } else {
+      const d = Math.hypot(cu - u, cv - v);
+      if (d <= 9 && d < bestD) { best = i; bestD = d; }
+    }
+  }
+  return best;
 }
 
 function updateAreaLabels(level) {
@@ -558,9 +664,9 @@ function pickAt(x, y, label) {
   aff = computeAffine();
   const level = map.getLevel();
   if (level > NET_MAX_LEVEL) { S.pendingPick = [x, y, label]; map.setLevel(3, { anchor: xyToLatLng(x, y) }); return; }
-  if (!label && S.show.shops && level <= SHOP_MAX_LEVEL) {
-    const near = retailersNear(x, y, 10 / aff.pxPerM, false);
-    if (near.length) { renderRetailer(near[0][0]); return; }
+  if (!label) {
+    const i = shopAtPx(x, y);
+    if (i >= 0) { renderRetailer(i); return; }
   }
   let s = nearestSegment(x, y, 20 / aff.pxPerM);
   if (!s) s = nearestSegment(x, y, 80);
@@ -585,7 +691,29 @@ const linkBtns = (lat, lng, name) => {
   const nm = encodeURIComponent(name || "선택한 지점");
   return `<div class="btns"><a class="primary" href="https://map.kakao.com/link/roadview/${lat.toFixed(6)},${lng.toFixed(6)}" target="_blank" rel="noopener">로드뷰 보기</a><a href="https://map.kakao.com/link/map/${nm},${lat.toFixed(6)},${lng.toFixed(6)}" target="_blank" rel="noopener">카카오맵 앱에서 열기</a></div>`;
 };
-const shopLine = (i, d) => `<li><span class="nm">${esc(S.ret.name[i] || "(이름 없음)")}${S.ret.st[i] ? " · 휴업 중" : ""}</span><span class="ad">${esc(S.ret.addr[i])}</span><span class="d">${fmt(d)}m</span></li>`;
+const shopLine = (i, d) => `<li><span class="nm">${kindBadge(i)}${esc(S.ret.name[i] || "(이름 없음)")}${S.ret.st[i] ? " · 휴업 중" : ""}</span><span class="ad">${esc(S.ret.addr[i])}</span><span class="d">${fmt(d)}m</span></li>`;
+const KIND_WHY = [
+  "담배사업법 시행규칙 제7조의3제2항(영업소 간 거리기준)으로 지정된 점포",
+  "같은 조 제3항: 역·대형점포·큰 건물 등 건축물·시설물 안에 지정된 점포. 진열장·표시판을 건물 밖에 둘 수 없어요",
+  "2026.4.24 시행 담배사업법(법률 제21216호) 부칙 제3조 특례로 지정된 것으로 보이는 점포(추정). 거리기준을 2028.4.24까지 적용받지 않고, 그날 기준을 채우지 못하면 지정이 취소된 것으로 봅니다. 그때까지 종전 연초 담배는 팔 수 없는 조건이에요",
+  "인허가 데이터에 종류가 없는 점포(대부분 2009년 법 개정 전에 지정). 계산에서는 일반소매인으로 봤어요",
+];
+/* 임시·특례 소매인이 2028.4.24에 거리기준을 채우는지(특례가 아닌 소매인 기준, 추정) */
+function tempCheck(i) {
+  const rec = S.temp && S.temp.get(i), a = S.areas[S.ret.area[i]];
+  if (!rec || !a) return "";
+  const [dg, ng, dk, nk] = rec, m = S.meta.margin;
+  const grade = (d, lim) => d < lim - m ? 0 : d < lim + m ? 1 : 2;
+  let c = grade(dg, a.dist), why = [];
+  why.push(`가장 가까운 일반·미상 소매인${ng >= 0 ? `(${esc(S.ret.name[ng] || "이름 없음")})` : ""}까지 걸어서 ${dg >= FAR ? "400m 넘게" : `약 ${fmt(dg)}m`} — 기준 ${a.dist}m`);
+  const g = gunaeLimit(a);
+  if (g !== null && dk < FAR) {
+    if (Number.isNaN(g)) { if (dk < a.dist + m) { c = Math.min(c, 1); why.push(`구내소매인(${esc(S.ret.name[nk] || "이름 없음")})까지 약 ${fmt(dk)}m — 규칙에 관계가 없어 구청 확인 필요`); } }
+    else { c = Math.min(c, grade(dk, g)); why.push(`구내소매인(${esc(S.ret.name[nk] || "이름 없음")})까지 약 ${fmt(dk)}m — 기준 ${g}m`); }
+  }
+  const head = ["2028.4.24 거리기준 미충족 가능성 높음 → 지정 취소 대상일 수 있어요", "2028.4.24 거리기준 경계 → 실측에 따라 갈려요", "2028.4.24 거리기준 충족 추정"][c];
+  return `<div class="${c === 2 ? "note" : "warn"}"><b>${head}</b><br>${why.join("<br>")}<br><span class="note">다른 임시·특례 점포끼리의 거리는 넣지 않은 추정입니다.</span></div>`;
+}
 
 function gauge(D, dist, m) {
   const max = Math.max(dist + 80, Math.min(Number.isFinite(D) ? D : 400, 400) + 30);
@@ -604,10 +732,13 @@ function areaDetails(a) {
   return `<details class="more"><summary>${esc(a.sido.replace(/특별시|광역시/, ""))} ${esc(a.name)} 규칙과 현황</summary><div>
     <dl class="kv">
       <dt>기준</dt><dd>영업소 간 <b>${a.dist}m</b> 이상 (일반소매인)</dd>
+      <dt>구내소매인</dt><dd>${esc(a.gnote || "—")}${a.gm === "unclear" ? `<br><span class="note">→ 구내소매인만 가까운 곳은 '현장 실측 필요'로 표시</span>` : ""}</dd>
+      ${a.trans ? `<dt>경과규정</dt><dd>${esc(a.trans)}까지: 폐업한 점포 자리에 새로 지정하거나 관할 안에서 위치를 옮길 때 종전 거리 적용(1회 등 조건 있음)</dd>` : ""}
+      ${a.special ? `<dt>특이사항</dt><dd>${esc(a.special)}</dd>` : ""}
       <dt>근거</dt><dd><a href="${link}" target="_blank" rel="noopener">${esc(a.rule)}</a></dd>
       <dt>시행</dt><dd>${esc(a.eff)}</dd>
       <dt>측정</dt><dd>${esc(a.measure)}</dd>
-      <dt>소매인</dt><dd>영업 중 ${fmt(a.n)}곳${a.rest ? ` · 휴업 ${a.rest}곳` : ""}${a.nc ? ` · 좌표 없음 ${fmt(a.nc)}곳 <button class="linkish" type="button" data-nc="${a.i}">목록</button>` : ""}</dd>
+      <dt>소매인</dt><dd>영업 중 ${fmt(a.n)}곳${a.kinds ? `<br><span class="note">${a.kinds.map((c, k) => `${KIND_SHORT[k]} ${fmt(c)}`).join(" · ")}</span>` : ""}${a.rest ? `<br>휴업 ${a.rest}곳` : ""}${a.nc ? `<br>좌표 없음 ${fmt(a.nc)}곳 <button class="linkish" type="button" data-nc="${a.i}">목록</button>` : ""}</dd>
     </dl>
     <div class="bar3" role="img" aria-label="도로 길이 비율"><i class="b2" style="width:${pct(k2)}%"></i><i class="b1" style="width:${pct(k1)}%"></i><i class="b0" style="width:${pct(k0)}%"></i></div>
     <div class="bar3legend"><span>가능 ${fmtKm(k2)}km</span><span>실측 필요 ${fmtKm(k1)}km</span><span>어려움 ${fmtKm(k0)}km</span></div>
@@ -622,7 +753,7 @@ async function showNoCoords(i) {
   if (!box) return;
   if (!S.nocoords) { box.innerHTML = `<p class="note">불러오는 중…</p>`; S.nocoords = await getJSON("data/nocoords.json"); }
   const rows = S.nocoords.filter((r) => r[2] === i);
-  box.innerHTML = `<p class="note">좌표가 없어 계산에서 빠진 소매인 ${rows.length}곳</p><ol class="nclist">${rows.map((r) => `<li>${esc(r[0])}${r[3] ? " (휴업)" : ""} · ${esc(r[1])}</li>`).join("")}</ol>`;
+  box.innerHTML = `<p class="note">좌표가 없어 계산에서 빠진 소매인 ${rows.length}곳</p><ol class="nclist">${rows.map((r) => `<li><span class="kb k${r[7] ?? 3}">${KIND_SHORT[r[7] ?? 3]}</span>${esc(r[0])}${r[3] ? " (휴업)" : ""} · ${esc(r[1])}</li>`).join("")}</ol>`;
 }
 function missWarn(a) {
   const r = missRate(a);
@@ -635,24 +766,38 @@ function renderPick(s, label) {
   placeMarkers([s.px, s.py], src >= 0 && D < Infinity ? [S.ret.x[src], S.ret.y[src]] : null);
   const ll = xyToLatLng(s.px, s.py);
   const near = retailersNear(s.px, s.py, 150).slice(0, 6);
-  const straight = near.length ? near[0][1] : Infinity;
+  const glim = gunaeLimit(a);
+  // 판정을 정한 소매인이 구내소매인이면 그 지역의 일반↔구내 거리로 비교
+  const srcKind = src >= 0 && D < Infinity ? kindOf(src) : -1;
+  const unclearK = srcKind === K_GUNAE && Number.isNaN(glim);
+  const thr = srcKind === K_GUNAE && Number.isFinite(glim) ? glim : dist;
+  // 직선 거리 경고는 판정에 들어가는 소매인만 (거리제한 없는 구내소매인 제외)
+  const counted = near.filter(([i]) => kindOf(i) !== K_GUNAE || glim !== null);
+  const straight = counted.length ? counted[0][1] : Infinity;
   const dTxt = Number.isFinite(D) && D < 400 ? fmt(D) : "400+";
-  const sub = cls === 2 ? `걸어서 기준(${dist}m)보다 ${m}m 이상 멀어요`
-    : cls === 1 ? `기준(${dist}m)과 ±${m}m 차이라 실측으로 결과가 갈려요`
-    : `걸어서 기준(${dist}m)보다 ${m}m 이상 가까워요`;
+  const sub = unclearK && cls === 1 ? "가까운 구내소매인과의 관계가 규칙에 없어 구청 확인이 필요해요"
+    : cls === 2 ? `걸어서 기준(${thr}m)보다 ${m}m 이상 멀어요`
+    : cls === 1 ? `기준(${thr}m)과 ±${m}m 차이라 실측으로 결과가 갈려요`
+    : `걸어서 기준(${thr}m)보다 ${m}m 이상 가까워요`;
   let srcHtml = "";
-  if (src >= 0 && D < Infinity) {
+  if (srcKind >= 0) {
     const sd = Math.hypot(S.ret.x[src] - s.px, S.ret.y[src] - s.py);
-    srcHtml = `<dl class="kv"><dt>가장 가까운<br>소매인</dt><dd><b>${esc(S.ret.name[src] || "(이름 없음)")}</b>${S.ret.st[src] ? " · 휴업 중(지정 유지)" : ""}<br><span class="note">${esc(S.ret.addr[src])}</span><br><span class="note">지정 ${esc(S.ret.date[src] || "—")} · 직선 ${fmt(sd)}m · 지도에 점선 원으로 표시</span></dd></dl>`;
+    const kNote = srcKind === K_GUNAE ? `<br><span class="note">구내소매인 — 이 지역 규칙: ${esc(a.gnote)}</span>`
+      : srcKind === K_TEMP ? `<br><span class="note">임시·특례 지정(거리 유예 ~2028.4.24). 2028.4.24에 거리기준을 못 채우면 지정 취소로 보므로, 그 뒤에는 이 자리 판정이 바뀔 수 있어요.</span>` : "";
+    srcHtml = `<dl class="kv"><dt>판정에 쓴<br>소매인</dt><dd>${kindBadge(src)}<b>${esc(S.ret.name[src] || "(이름 없음)")}</b>${S.ret.st[src] ? " · 휴업 중(지정 유지)" : ""}<br><span class="note">${esc(S.ret.addr[src])}</span><br><span class="note">지정 ${esc(S.ret.date[src] || "—")} · 직선 ${fmt(sd)}m · 지도에 점선 원으로 표시</span>${kNote}</dd></dl>`;
   }
+  // 거리제한이 없어 판정에서 뺀 가까운 구내소매인
+  const skipped = glim === null ? near.filter(([i, d]) => kindOf(i) === K_GUNAE && d < dist) : [];
+  const skipHtml = skipped.length
+    ? `<p class="note">가까운 구내소매인 ${skipped.map(([i, d]) => `${esc(S.ret.name[i] || "이름 없음")}(직선 ${fmt(d)}m)`).join(", ")}은 이 지역 규칙상 일반소매인과 거리제한이 없어 판정에서 뺐어요.</p>` : "";
   const warnPath = cls >= 1 && straight < dist - m && D > straight * 2.5
-    ? `<p class="warn">직선으로 ${fmt(straight)}m 거리에 소매인(${esc(S.ret.name[near[0][0]] || "이름 없음")})이 있어요. 지하도·역사·건물 통로가 지도 데이터에 빠져 거리가 길게 계산됐을 수 있습니다.</p>` : "";
+    ? `<p class="warn">직선으로 ${fmt(straight)}m 거리에 소매인(${esc(S.ret.name[counted[0][0]] || "이름 없음")})이 있어요. 지하도·역사·건물 통로가 지도 데이터에 빠져 거리가 길게 계산됐을 수 있습니다.</p>` : "";
   openSheet(`c${cls}`, `선택한 지점${label ? " · " + esc(label) : ""}`, VERDICT[cls], sub, `
     <p class="addr" id="pickaddr">주소 확인 중…</p>
-    <div class="big"><span class="n">${dTxt}</span><span class="u">m</span><span class="cap">가장 가까운 기존 소매인까지 걸어서 (추정)</span></div>
-    ${gauge(D, dist, m)}
+    <div class="big"><span class="n">${dTxt}</span><span class="u">m</span><span class="cap">판정에 쓴 가장 가까운 소매인까지 걸어서 (추정)</span></div>
+    ${gauge(D, thr, m)}
     ${warnPath}${cls === 2 ? missWarn(a) : ""}
-    ${srcHtml}
+    ${srcHtml}${skipHtml}
     ${linkBtns(ll.getLat(), ll.getLng(), label)}
     <details class="more"><summary>주변 소매인 (직선 150m 안 ${near.length}곳)</summary><div>${near.length ? `<ul class="near">${near.map(([i, d]) => shopLine(i, d)).join("")}</ul>` : `<p class="note">없음</p>`}</div></details>
     ${areaDetails(a)}
@@ -668,10 +813,12 @@ function renderPick(s, label) {
   });
 }
 function renderRetailer(i) {
-  const r = S.ret, a = S.areas[r.area[i]];
+  const r = S.ret, a = S.areas[r.area[i]], k = kindOf(i);
   placeMarkers(null, [r.x[i], r.y[i]]);
-  openSheet("shop", "영업 중인 소매인", esc(r.name[i] || "(이름 없음)"), a ? `이 점포에서 걸어서 ${a.dist}m 안은 새 지정이 어려워요` : "", `
-    <dl class="kv"><dt>주소</dt><dd>${esc(r.addr[i])}</dd><dt>지정일</dt><dd>${esc(r.date[i] || "—")}</dd></dl>
+  openSheet(`k${k}`, `${KIND[k]} · ${r.st[i] ? "휴업 중" : "영업 중"}`, esc(r.name[i] || "(이름 없음)"), blockText(i, a), `
+    <dl class="kv"><dt>종류</dt><dd>${kindBadge(i)}${esc(KIND_WHY[k])}${k === K_GUNAE && a ? `<br><span class="note">이 지역 규칙: ${esc(a.gnote)}</span>` : ""}</dd>
+      <dt>주소</dt><dd>${esc(r.addr[i])}</dd><dt>지정일</dt><dd>${esc(r.date[i] || "—")}</dd></dl>
+    ${k === K_TEMP ? tempCheck(i) : ""}
     ${linkBtns(r.lat[i], r.lon[i], r.name[i])}
     ${a ? areaDetails(a) : ""}`);
   bindAreaButtons();
@@ -692,7 +839,7 @@ function localShops(q) {
   if (nq.length < 2) return out;
   for (let i = 0; i < S.ret.x.length && out.length < 5; i++) {
     if (S.ret.st[i] || S.ret.area[i] < 0) continue;
-    if (norm(S.ret.name[i]).includes(nq)) out.push({ t: "shop", tl: "소매인", n: S.ret.name[i], s: S.ret.addr[i], lat: S.ret.lat[i], lng: S.ret.lon[i], r: i });
+    if (norm(S.ret.name[i]).includes(nq)) out.push({ t: "shop k" + kindOf(i), tl: KIND_SHORT[kindOf(i)], n: S.ret.name[i], s: S.ret.addr[i], lat: S.ret.lat[i], lng: S.ret.lon[i], r: i });
   }
   return out;
 }
@@ -811,6 +958,8 @@ function initMap() {
       S.meta = meta;
       S.areas = areas.map((a) => ({ ...a, polys: a.geom.map(decodeRings) }));
       indexRetailers(ret); S.ret = ret;
+      S.temp = new Map((ret.temp || []).map((r) => [r[0], r.slice(1)]));
+      if (meta.openByKind) ["일반", "구내", "임시·특례", "미상"].forEach((k, j) => { $("kc" + j).textContent = fmt(meta.openByKind[k] || 0); });
       $("badge").textContent = `기준일 ${meta.localdata} · 영업 중 소매인 ${fmt(meta.open)}곳 · 서울·경기·인천`;
       $("helpSrc").textContent += ` · 인허가 기준 ${meta.localdata}, 도로망 ${meta.osm}`;
       ensureNets(); scheduleRedraw();
@@ -839,6 +988,8 @@ function initMap() {
   $("meBtn").addEventListener("click", locateMe);
   $("tgRoads").addEventListener("change", (e) => { S.show.roads = e.target.checked; scheduleRedraw(); });
   $("tgShops").addEventListener("change", (e) => { S.show.shops = e.target.checked; scheduleRedraw(); });
+  for (const cb of document.querySelectorAll("[data-kind]"))
+    cb.addEventListener("change", () => { S.show.kinds[+cb.dataset.kind] = cb.checked; scheduleRedraw(); });
 }
 
 // 범례 접기 (휴대폰은 처음에 접힌 상태)

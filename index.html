@@ -10,8 +10,8 @@
 :root{
   --bar:#1a252f; --bar-ink:#ffffff; --bar-muted:#aab4bd; --brand:#8e44ad; --brand-ink:#ffffff;
   --panel:#ffffff; --ink:#1a252f; --muted:#5f6b75; --line:#e3e7ea; --soft:#f3f5f7;
-  --ok:#2563eb; --edge:#f59f00; --no:#e03131; --ret:#1a252f; --halo:#ffffff;
-  /* 소매인 종류(깃발): 일반 · 구내 · 임시·특례 · 종류 미상 — 도로 색(파랑·주황·빨강)과 겹치지 않게 */
+  --ok:#2563eb; --edge:#40c057; --edge-ink:#0b2e13; --edge-text:#2b8a3e; --no:#e03131; --ret:#1a252f; --halo:#ffffff;
+  /* 소매인 종류(깃발): 일반 · 구내 · 임시·특례 · 종류 미상 — 도로 색(파랑·초록·빨강)과 구분되게 */
   --k0:#2b8a3e; --k1:#7048e8; --k2:#e64980; --k3:#5c6670;
   --font:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   color-scheme:light;
@@ -91,7 +91,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 }
 .grip{width:42px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 0}
 .sheethead{padding:14px 16px 12px;color:#fff;position:relative}
-.sheethead.c2{background:var(--ok)}.sheethead.c1{background:var(--edge);color:#241800}.sheethead.c0{background:var(--no)}.sheethead.shop{background:var(--bar)}.sheethead.none{background:#566573}
+.sheethead.c2{background:var(--ok)}.sheethead.c1{background:var(--edge);color:var(--edge-ink)}.sheethead.c0{background:var(--no)}.sheethead.shop{background:var(--bar)}.sheethead.none{background:#566573}
 .sheethead.k0{background:var(--k0)}.sheethead.k1{background:var(--k1)}.sheethead.k2{background:var(--k2)}.sheethead.k3{background:var(--k3)}
 .sheethead .lbl{font-size:12px;font-weight:700;opacity:.85}
 .sheethead .verdict{font-size:22px;font-weight:800;letter-spacing:-.01em;margin-top:2px}
@@ -209,7 +209,7 @@ a{color:var(--brand)}
   <div class="box">
     <h2 id="helpTitle">이 지도 보는 법</h2>
     <ol>
-      <li>지도를 확대하면 도로가 <b style="color:var(--ok)">파랑</b>·<b style="color:#b26a00">주황</b>·<b style="color:var(--no)">빨강</b>으로 칠해집니다.</li>
+      <li>지도를 확대하면 도로가 <b style="color:var(--ok)">파랑</b>·<b style="color:var(--edge-text)">초록</b>·<b style="color:var(--no)">빨강</b>으로 칠해집니다.</li>
       <li>색은 <b>그 자리에서 가장 가까운 기존 담배소매인까지 걸어서 몇 m인지</b>를 그 지역 규칙의 거리(50m 또는 100m)와 비교한 결과입니다.</li>
       <li>지정된 소매인은 깃발로 보이고, 종류에 따라 색이 다릅니다: <b style="color:var(--k0)">일반</b>·<b style="color:var(--k1)">구내</b>·<b style="color:var(--k2)">임시·특례</b>·<b style="color:var(--k3)">종류 미상</b>. 범례에서 종류별로 켜고 끌 수 있어요.</li>
       <li>도로나 깃발을 누르거나 위에서 주소를 검색하면 판정과 거리가 크게 나옵니다. 로드뷰로 현장도 볼 수 있습니다.</li>
@@ -833,7 +833,7 @@ function gauge(D, dist, m) {
   return `<div class="gauge" role="img" aria-label="보행거리 ${Number.isFinite(D) ? fmt(D) : "400 이상"}m, 기준 ${dist}m">
     <div class="gbar"><i style="width:${pct(lo)}%;background:var(--no)"></i><i style="width:${pct(hi) - pct(lo)}%;background:var(--edge)"></i><i style="width:${100 - pct(hi)}%;background:var(--ok)"></i><span class="gmark" style="left:${pct(dv)}%"></span></div>
     <div class="gticks"><span style="left:0;transform:none">0m</span><span style="left:${pct(dist)}%"><b>기준 ${dist}m</b></span><span style="right:0;left:auto;transform:none">${Math.round(max)}m${Number.isFinite(D) && D < 400 ? "" : "+"}</span></div>
-    <p class="note">빨강 ${lo}m 미만 · 주황 ${lo}~${hi}m(실측 필요) · 파랑 ${hi}m 이상</p>
+    <p class="note">빨강 ${lo}m 미만 · 초록 ${lo}~${hi}m(실측 필요) · 파랑 ${hi}m 이상</p>
   </div>`;
 }
 

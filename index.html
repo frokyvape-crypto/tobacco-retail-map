@@ -290,6 +290,12 @@ const getJSON = async (p) => { const r = await fetch(p); if (!r.ok) throw new Er
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
   for (const k of ["ink", "ok", "edge", "no", "ret", "halo", "bar", "k0", "k1", "k2", "k3"]) S.colors[k] = cs.getPropertyValue("--" + k).trim();
+  // '지정 어려움' 빨강은 흰색을 20% 섞은 색으로 (예전의 투명도 0.8 효과를 겹침 없이)
+  const hex = /^#([0-9a-f]{6})$/i.exec(S.colors.no);
+  if (hex) {
+    const n = parseInt(hex[1], 16), mix = (c) => Math.round(c * 0.8 + 255 * 0.2);
+    S.colors.noSoft = `rgb(${mix(n >> 16)} ${mix((n >> 8) & 255)} ${mix(n & 255)})`;
+  } else S.colors.noSoft = S.colors.no;
 }
 const kindOf = (i) => (S.ret.kind ? S.ret.kind[i] : K_UNKNOWN);
 const kindBadge = (i) => `<span class="kb k${kindOf(i)}">${KIND_SHORT[kindOf(i)]}</span>`;
@@ -331,7 +337,9 @@ function inRings(polys, x, y) {
   }
   return false;
 }
-function decodeNet(recs) {
+/* 시군구 도로 판정 파일 풀기. 웹 워커에서도 그대로 돌도록 바깥 변수를 쓰지 않는다.
+   cellKeys/cellStart/cellItems: 누르기용 CELL 칸별 구간 목록, chunk*: 그리기용 CHUNK 칸 묶음(첫 점 기준, 분류순) */
+function decodeNetData(recs, CELL, CHUNK) {
   let nV = 0;
   for (const r of recs) nV += r[1].length / 3;
   const n = recs.length;
@@ -353,17 +361,115 @@ function decodeNet(recs) {
     bb[i * 4] = x0; bb[i * 4 + 1] = y0; bb[i * 4 + 2] = x1; bb[i * 4 + 3] = y1;
   }
   start[n] = v;
-  const grid = new Map();
-  for (let i = 0; i < n; i++) {
+  const cells = new Map();
+  let total = 0;
+  for (let i = 0; i < n; i++)
     for (let cx = Math.floor(bb[i * 4] / CELL); cx <= Math.floor(bb[i * 4 + 2] / CELL); cx++)
       for (let cy = Math.floor(bb[i * 4 + 1] / CELL); cy <= Math.floor(bb[i * 4 + 3] / CELL); cy++) {
-        const key = cellKey(cx, cy);
-        let arr = grid.get(key);
-        if (!arr) grid.set(key, (arr = []));
-        arr.push(i);
+        const key = cx * 100000 + cy;
+        let arr = cells.get(key);
+        if (!arr) cells.set(key, (arr = []));
+        arr.push(i); total++;
       }
+  const cellKeys = new Float64Array(cells.size), cellStart = new Int32Array(cells.size + 1), cellItems = new Int32Array(total);
+  let ci = 0, q = 0;
+  for (const [key, arr] of cells) { cellKeys[ci] = key; cellStart[ci++] = q; for (const i of arr) cellItems[q++] = i; }
+  cellStart[ci] = q;
+  const chunks = new Map();
+  for (let i = 0; i < n; i++) {
+    const key = Math.floor(X[start[i]] / CHUNK) * 100000 + Math.floor(Y[start[i]] / CHUNK);
+    let arr = chunks.get(key);
+    if (!arr) chunks.set(key, (arr = []));
+    arr.push(i);
   }
-  return { X, Y, D, SRC, start, cls, bb, grid, n, seen: new Int32Array(n) };
+  const chunkStart = new Int32Array(chunks.size + 1), chunkSegs = new Int32Array(n), chunkBB = new Int32Array(chunks.size * 4);
+  let k = 0;
+  q = 0;
+  for (const arr of chunks.values()) {
+    arr.sort((a, b) => cls[a] - cls[b]);
+    chunkStart[k] = q;
+    let x0 = 2e9, y0 = 2e9, x1 = -2e9, y1 = -2e9;
+    for (const i of arr) {
+      chunkSegs[q++] = i;
+      x0 = Math.min(x0, bb[i * 4]); y0 = Math.min(y0, bb[i * 4 + 1]); x1 = Math.max(x1, bb[i * 4 + 2]); y1 = Math.max(y1, bb[i * 4 + 3]);
+    }
+    chunkBB[k * 4] = x0; chunkBB[k * 4 + 1] = y0; chunkBB[k * 4 + 2] = x1; chunkBB[k * 4 + 3] = y1;
+    k++;
+  }
+  chunkStart[k] = q;
+  return { X, Y, D, SRC, start, cls, bb, cellKeys, cellStart, cellItems, chunkStart, chunkSegs, chunkBB };
+}
+function makeNet(o) {
+  const grid = new Map();
+  for (let c = 0; c < o.cellKeys.length; c++) grid.set(o.cellKeys[c], c);
+  return { ...o, grid, n: o.cls.length, m: o.chunkBB.length / 4, seen: new Int32Array(o.cls.length), paths: [] };
+}
+/* 도로 판정 파일은 웹 워커 2개에서 받아 풀어 화면이 멈추지 않게 한다(워커를 못 쓰면 화면 쪽에서) */
+const NET_CHUNK = 1000, NET_PARALLEL = 3;
+let netWorkers = null, netSeq = 0;
+const netJobs = new Map();
+function netPool() {
+  if (netWorkers) return netWorkers;
+  netWorkers = [];
+  try {
+    const src = `${decodeNetData.toString()}
+self.onmessage = async (ev) => {
+  const { id, url, cell, chunk } = ev.data;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(url + ": " + r.status);
+    const o = decodeNetData(await r.json(), cell, chunk);
+    self.postMessage({ id, o }, Object.values(o).map((a) => a.buffer));
+  } catch (e) { self.postMessage({ id, error: String(e) }); }
+};`;
+    const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    for (let w = 0; w < 2; w++) {
+      const wk = new Worker(url);
+      wk.onmessage = (ev) => {
+        const job = netJobs.get(ev.data.id);
+        if (!job) return;
+        netJobs.delete(ev.data.id);
+        if (ev.data.error) job.reject(new Error(ev.data.error)); else job.resolve(ev.data.o);
+      };
+      wk.onerror = () => { netWorkers = []; for (const job of netJobs.values()) job.reject(new Error("worker")); netJobs.clear(); };
+      netWorkers.push(wk);
+    }
+  } catch { netWorkers = []; }
+  return netWorkers;
+}
+function loadNet(i) {
+  const url = new URL(`data/net/${i}.json`, location.href).href;
+  const pool = netPool();
+  if (!pool.length) return getJSON(url).then((recs) => decodeNetData(recs, CELL, NET_CHUNK));
+  return new Promise((resolve, reject) => {
+    const id = ++netSeq;
+    netJobs.set(id, { resolve, reject });
+    pool[id % pool.length].postMessage({ id, url, cell: CELL, chunk: NET_CHUNK });
+  });
+}
+/* 그리기용 Path2D: CHUNK 묶음별·분류별로 한 번 만들어 두고(묶음 왼쪽 아래 기준 좌표) 다시 쓴다 */
+function chunkPaths(net, k) {
+  let p = net.paths[k];
+  if (p) return p;
+  p = [null, null, null];
+  const ox = net.chunkBB[k * 4], oy = net.chunkBB[k * 4 + 1], X = net.X, Y = net.Y;
+  for (let q = net.chunkStart[k]; q < net.chunkStart[k + 1]; q++) {
+    const i = net.chunkSegs[q], c = net.cls[i], s = net.start[i], e = net.start[i + 1];
+    const path = p[c] || (p[c] = new Path2D());
+    path.moveTo(X[s] - ox, Y[s] - oy);
+    for (let v = s + 1; v < e; v++) path.lineTo(X[v] - ox, Y[v] - oy);
+  }
+  return (net.paths[k] = p);
+}
+function areaPath(a) {
+  if (a.path) return a.path;
+  const p = new Path2D(), ox = a.bbox[0], oy = a.bbox[1];
+  for (const rings of a.polys) for (const r of rings) {
+    p.moveTo(r[0] - ox, r[1] - oy);
+    for (let i = 2; i < r.length; i += 2) p.lineTo(r[i] - ox, r[i + 1] - oy);
+    p.closePath();
+  }
+  return (a.path = p);
 }
 function indexRetailers(ret) {
   ret.grid = new Map();
@@ -397,7 +503,10 @@ const missRate = (a) => a.nc / Math.max(1, a.n + a.rest + a.nc);
 /* ---------- 카카오 지도 + 판정 레이어 ---------- */
 let map, proj, geocoder, places, canvas, layerOverlay, aff = null;
 let pinOverlay = null, ringOverlay = null, meOverlay = null, areaLabels = [];
-const MARGIN = 0.35;
+const MARGIN = 0.25;              // 화면 밖으로 미리 그려 두는 여유(끌어 옮길 때 빈 곳이 덜 보이게)
+const MAX_CANVAS_PX = 4.5e6;      // 판정 캔버스 최대 픽셀 수
+const LINE_W = [0, 5.6, 5, 4.2, 3.4, 2.6, 2];   // 지도 레벨별 도로 선 굵기(px)
+const HALO_W = 2.6;               // 도로 선 바깥 흰 테두리 두께(px)
 
 function computeAffine() {
   const el = $("map"), W = el.clientWidth, H = el.clientHeight;
@@ -425,77 +534,71 @@ const toPx = (X, Y) => [aff.a * X + aff.b * Y + aff.c, aff.d * X + aff.e * Y + a
 const pxToLatLng = (u, v) => proj.coordsFromContainerPoint(new kakao.maps.Point(u, v));
 const xyToLatLng = (X, Y) => { const [u, v] = toPx(X, Y); return pxToLatLng(u, v); };
 
+let canvasDims = "";
 function redraw() {
   if (!map || !S.areas.length) return;
   aff = computeAffine();
   const level = map.getLevel();
   const mx = Math.round(aff.W * MARGIN), my = Math.round(aff.H * MARGIN);
   const CW = aff.W + 2 * mx, CH = aff.H + 2 * my;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = CW * dpr; canvas.height = CH * dpr;
-  canvas.style.width = CW + "px"; canvas.style.height = CH + "px";
+  // 큰 화면·고해상도 화면에서도 캔버스 픽셀 수를 일정 이하로 (그리기·화면 이동 부담 감소)
+  const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PX / (CW * CH)));
+  const dims = `${CW}x${CH}@${dpr}`;
+  if (dims !== canvasDims) {   // 크기가 같으면 캔버스를 새로 만들지 않고 지우기만
+    canvas.width = Math.round(CW * dpr); canvas.height = Math.round(CH * dpr);
+    canvas.style.width = CW + "px"; canvas.style.height = CH + "px";
+    canvasDims = dims;
+  }
   // 카카오는 기준점이 화면 밖인 오버레이를 그리지 않으므로 기준점은 화면 가운데에 두고,
   // 캔버스를 그만큼 왼쪽 위로 옮겨 캔버스 (0,0) = 지도 컨테이너 (-mx,-my) 가 되게 한다
   canvas.style.left = -(aff.W / 2 + mx) + "px"; canvas.style.top = -(aff.H / 2 + my) + "px";
   layerOverlay.setPosition(pxToLatLng(aff.W / 2, aff.H / 2));
   const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, mx * dpr, my * dpr);
-  ctx.clearRect(-mx, -my, CW, CH);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   const padM = Math.max(mx, my) / aff.pxPerM;
   const box = [aff.view[0] - padM, aff.view[1] - padM, aff.view[2] + padM, aff.view[3] + padM];
-  const C = S.colors, P = toPx;
+  const C = S.colors, P = toPx, pxM = aff.pxPerM;
+  // 미리 만들어 둔 Path2D(기준점 ox, oy 를 뺀 미터 좌표)를 화면에 맞추는 변환. 선 굵기는 미터 단위로 넣는다
+  const setWorld = (ox, oy) => ctx.setTransform(dpr * aff.a, dpr * aff.d, dpr * aff.b, dpr * aff.e,
+    dpr * (aff.a * ox + aff.b * oy + aff.c + mx), dpr * (aff.d * ox + aff.e * oy + aff.f + my));
 
   // 시군구 경계
-  ctx.beginPath();
+  ctx.setLineDash(level >= 7 ? [] : [7 / pxM, 5 / pxM]);
+  ctx.strokeStyle = C.bar; ctx.globalAlpha = level >= 7 ? 0.6 : 0.45; ctx.lineWidth = (level >= 7 ? 1.8 : 2.2) / pxM;
   for (const a of S.areas) {
     if (!hit(a.bbox, box)) continue;
-    for (const rings of a.polys) for (const r of rings) {
-      let [u, v] = P(r[0], r[1]); ctx.moveTo(u, v);
-      for (let i = 2; i < r.length; i += 2) { [u, v] = P(r[i], r[i + 1]); ctx.lineTo(u, v); }
-      ctx.closePath();
-    }
+    setWorld(a.bbox[0], a.bbox[1]); ctx.stroke(areaPath(a));
   }
-  ctx.setLineDash(level >= 7 ? [] : [7, 5]);
-  ctx.strokeStyle = C.bar; ctx.globalAlpha = level >= 7 ? 0.6 : 0.45; ctx.lineWidth = level >= 7 ? 1.8 : 2.2;
-  ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
 
   // 도로 판정 색
   if (level <= NET_MAX_LEVEL && S.show.roads) {
-    const lw = [0, 8, 7, 6, 5, 3.6, 2.6][level] || 2.4;
-    const stamp = ++S.stamp, lists = [[], [], []];
+    const lw = LINE_W[level] || 1.6, halo = level >= 6 ? 1.6 : HALO_W;
+    const chunks = [];
     for (const a of S.areas) {
       const net = S.nets.get(a.i);
       if (!net || !hit(a.bbox, box)) continue;
-      for (let cx = Math.floor(box[0] / CELL); cx <= Math.floor(box[2] / CELL); cx++)
-        for (let cy = Math.floor(box[1] / CELL); cy <= Math.floor(box[3] / CELL); cy++) {
-          const arr = net.grid.get(cellKey(cx, cy));
-          if (!arr) continue;
-          for (const i of arr) {
-            if (net.seen[i] === stamp) continue;
-            net.seen[i] = stamp;
-            const b = net.bb;
-            if (b[i * 4] > box[2] || b[i * 4 + 2] < box[0] || b[i * 4 + 1] > box[3] || b[i * 4 + 3] < box[1]) continue;
-            lists[net.cls[i]].push(net, i);
-          }
-        }
+      const B = net.chunkBB;
+      for (let k = 0; k < net.m; k++)
+        if (B[k * 4] <= box[2] && B[k * 4 + 2] >= box[0] && B[k * 4 + 1] <= box[3] && B[k * 4 + 3] >= box[1]) chunks.push(net, k);
     }
     ctx.lineCap = "round"; ctx.lineJoin = "round";
-    const trace = (list) => {
-      ctx.beginPath();
-      for (let q = 0; q < list.length; q += 2) {
-        const net = list[q], i = list[q + 1], s = net.start[i], e = net.start[i + 1];
-        let [u, v] = P(net.X[s], net.Y[s]); ctx.moveTo(u, v);
-        for (let k = s + 1; k < e; k++) { [u, v] = P(net.X[k], net.Y[k]); ctx.lineTo(u, v); }
+    const pass = (c, style, width) => {
+      ctx.strokeStyle = style; ctx.lineWidth = width / pxM;
+      for (let q = 0; q < chunks.length; q += 2) {
+        const net = chunks[q], k = chunks[q + 1], p = chunkPaths(net, k)[c];
+        if (!p) continue;
+        setWorld(net.chunkBB[k * 4], net.chunkBB[k * 4 + 1]); ctx.stroke(p);
       }
     };
     for (const c of [0, 1, 2]) {
-      if (!lists[c].length) continue;
-      trace(lists[c]);
-      ctx.strokeStyle = C.halo; ctx.globalAlpha = 0.95; ctx.lineWidth = lw + 3.5; ctx.stroke();
-      ctx.strokeStyle = [C.no, C.edge, C.ok][c]; ctx.globalAlpha = c === 0 ? 0.8 : 1; ctx.lineWidth = c === 2 ? lw + 0.8 : lw; ctx.stroke();
+      const w = c === 2 ? lw + 0.5 : lw;
+      pass(c, C.halo, w + halo);
+      pass(c, [C.noSoft, C.edge, C.ok][c], w);
     }
-    ctx.globalAlpha = 1;
   }
+  ctx.setTransform(dpr, 0, 0, dpr, mx * dpr, my * dpr);
 
   // 영업 중 소매인: 확대하면 종류별 색 깃발(깃대 아래 끝 = 점포 위치), 레벨 5는 색 점
   if (level <= SHOP_MAX_LEVEL && S.show.shops) {
@@ -589,20 +692,27 @@ function updateAreaLabels(level) {
     areaLabels.push(new kakao.maps.CustomOverlay({ position: xyToLatLng(a.label[0], a.label[1]), content: el, xAnchor: 0, yAnchor: 0, zIndex: 2, map }));
   }
 }
-let raf = 0;
-function scheduleRedraw() { cancelAnimationFrame(raf); raf = requestAnimationFrame(redraw); }
+let raf = 0, soonTimer = 0;
+function scheduleRedraw() { clearTimeout(soonTimer); soonTimer = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(redraw); }
+/* 도로 파일이 잇달아 도착할 때는 한 번에 모아 다시 그린다 */
+function scheduleRedrawSoon() { if (!soonTimer) soonTimer = setTimeout(() => { soonTimer = 0; scheduleRedraw(); }, 150); }
 
+/* 화면 가까운 시군구부터 동시에 NET_PARALLEL 개씩 받는다 */
 function ensureNets() {
   if (!map || !S.areas.length) return;
   if (map.getLevel() > NET_MAX_LEVEL) { updateHint(); return; }
   const v = computeAffine().view, pad = (v[2] - v[0]) * 0.3;
   const box = [v[0] - pad, v[1] - pad, v[2] + pad, v[3] + pad];
-  for (const a of S.areas) {
-    if (!a.size || S.nets.has(a.i) || S.loading.has(a.i) || !hit(a.bbox, box)) continue;
-    const p = getJSON(`data/net/${a.i}.json`).then((recs) => {
-      S.nets.set(a.i, decodeNet(recs));
+  const cx = (v[0] + v[2]) / 2, cy = (v[1] + v[3]) / 2;
+  const gap = (a) => Math.hypot(Math.max(a.bbox[0] - cx, 0, cx - a.bbox[2]), Math.max(a.bbox[1] - cy, 0, cy - a.bbox[3]));
+  const want = S.areas.filter((a) => a.size && !S.nets.has(a.i) && !S.loading.has(a.i) && hit(a.bbox, box))
+    .sort((p, q) => gap(p) - gap(q));
+  for (const a of want) {
+    if (S.loading.size >= NET_PARALLEL) break;
+    const p = loadNet(a.i).then((o) => {
+      S.nets.set(a.i, makeNet(o));
       S.loading.delete(a.i);
-      updateHint(); scheduleRedraw();
+      updateHint(); scheduleRedrawSoon(); ensureNets();
       if (S.pendingPick && !S.loading.size) { const args = S.pendingPick; S.pendingPick = null; pickAt(...args); }
     }).catch((err) => { S.loading.delete(a.i); console.error(err); setHint(`${a.name} 도로 데이터를 불러오지 못했습니다`); });
     S.loading.set(a.i, p);
@@ -627,9 +737,10 @@ function nearestSegment(x, y, maxM) {
     const stamp = ++S.stamp;
     for (let cx = Math.floor(q[0] / CELL); cx <= Math.floor(q[2] / CELL); cx++)
       for (let cy = Math.floor(q[1] / CELL); cy <= Math.floor(q[3] / CELL); cy++) {
-        const arr = net.grid.get(cellKey(cx, cy));
-        if (!arr) continue;
-        for (const i of arr) {
+        const c = net.grid.get(cellKey(cx, cy));
+        if (c === undefined) continue;
+        for (let k = net.cellStart[c]; k < net.cellStart[c + 1]; k++) {
+          const i = net.cellItems[k];
           if (net.seen[i] === stamp) continue;
           net.seen[i] = stamp;
           for (let v = net.start[i]; v < net.start[i + 1] - 1; v++) {

@@ -75,7 +75,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 .kb.k0{background:var(--k0)}.kb.k1{background:var(--k1)}.kb.k2{background:var(--k2)}.kb.k3{background:var(--k3)}
 .kb.e0{background:var(--e0);color:var(--e0-ink)}.kb.e1,.kb.e2{background:var(--e1)}
 /* 폐업·취소 시기 고르기 */
-.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:var(--soft);border-radius:8px;padding:2px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--soft);border-radius:8px;padding:2px}
+.lgh .refd{display:block;font-weight:400;font-size:11px}
 .seg button{border:0;background:transparent;border-radius:6px;font-size:12px;font-weight:700;color:var(--muted);min-height:28px}
 .seg button[aria-checked="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0 / .16)}
 .ico{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:4px}
@@ -204,12 +205,14 @@ a{color:var(--brand)}
       <label class="kl"><input type="checkbox" data-kind="1" checked><svg class="flag" aria-hidden="true"><use href="#flagIcon" style="fill:var(--k1)"/></svg><span><b>구내소매인</b><small>역·대형점포·큰 건물 안</small></span><span class="c" id="kc1"></span></label>
       <label class="kl"><input type="checkbox" data-kind="2" checked><svg class="flag" aria-hidden="true"><use href="#flagIcon" style="fill:var(--k2)"/></svg><span><b>임시·특례소매인</b><small>2026 법 개정 특례(거리 유예 ~2028.4.24)</small></span><span class="c" id="kc2"></span></label>
       <label class="kl"><input type="checkbox" data-kind="3" checked><svg class="flag" aria-hidden="true"><use href="#flagIcon" style="fill:var(--k3)"/></svg><span><b>종류 미상</b><small>2009년 이전 지정 등</small></span><span class="c" id="kc3"></span></label>
-      <p class="lgh">지정이 끝난 자리 · 최근 기간 (확대하면 보임)</p>
+      <p class="lgh">지정이 끝난 자리 · 폐업·취소 시기 <span class="refd">(기준일 <span id="endRef">—</span>부터, 확대하면 보임)</span></p>
       <div class="seg" role="radiogroup" aria-label="폐업·취소된 시기">
-        <button type="button" role="radio" aria-checked="false" data-years="1" aria-label="최근 1년">1년</button>
-        <button type="button" role="radio" aria-checked="true" data-years="3" aria-label="최근 3년">3년</button>
-        <button type="button" role="radio" aria-checked="false" data-years="10" aria-label="최근 10년">10년</button>
-        <button type="button" role="radio" aria-checked="false" data-years="0">전체</button>
+        <button type="button" role="radio" aria-checked="false" data-period="7d" aria-label="최근 1주일">1주일</button>
+        <button type="button" role="radio" aria-checked="false" data-period="1m" aria-label="최근 1개월">1개월</button>
+        <button type="button" role="radio" aria-checked="true" data-period="3m" aria-label="최근 3개월">3개월</button>
+        <button type="button" role="radio" aria-checked="false" data-period="6m" aria-label="최근 6개월">6개월</button>
+        <button type="button" role="radio" aria-checked="false" data-period="12m" aria-label="최근 1년">1년</button>
+        <button type="button" role="radio" aria-checked="false" data-period="all">전체</button>
       </div>
       <label class="kl"><input type="checkbox" data-end="0" checked><svg class="flag" aria-hidden="true"><use href="#starIcon" style="fill:var(--e0)"/></svg><span><b>폐업 (지정 해지)</b><small>소매인이 폐업 신고로 그만둔 자리</small></span><span class="c" id="ec0"></span></label>
       <label class="kl"><input type="checkbox" data-end="1" checked><svg class="flag" aria-hidden="true"><use href="#starIcon" style="fill:var(--e1)"/></svg><span><b>지정취소·직권취소</b><small>관청이 지정을 취소한 자리</small></span><span class="c" id="ec1"></span></label>
@@ -236,7 +239,7 @@ a{color:var(--brand)}
       <li>색은 <b>그 자리에서 가장 가까운 기존 담배소매인까지 걸어서 몇 m인지</b>를 그 지역 규칙의 거리(50m 또는 100m)와 비교한 결과입니다.</li>
       <li>지정된 소매인은 깃발로 보이고, 종류에 따라 색이 다릅니다: <b style="color:var(--k0)">일반</b>·<b style="color:var(--k1)">구내</b>·<b style="color:var(--k2)">임시·특례</b>·<b style="color:var(--k3)">종류 미상</b>. 범례에서 종류별로 켜고 끌 수 있어요.</li>
       <li>도로나 깃발을 누르거나 위에서 주소를 검색하면 판정과 거리가 크게 나옵니다. 로드뷰로 현장도 볼 수 있습니다.</li>
-      <li>지정이 끝난 자리는 별로 보입니다: <b style="color:#b07000">★ 폐업(지정 해지)</b>·<b style="color:var(--e1)">★ 지정취소·직권취소</b>. 그 뒤 같은 건물에 새 소매인이 지정됐으면 별 대신 그 소매인 깃발 밑에 <b style="color:var(--e2)">클로버</b>가 붙습니다. 범례에서 기간(최근 1년·3년·10년·전체)을 고를 수 있어요.</li>
+      <li>지정이 끝난 자리는 별로 보입니다: <b style="color:#b07000">★ 폐업(지정 해지)</b>·<b style="color:var(--e1)">★ 지정취소·직권취소</b>. 그 뒤 같은 건물에 새 소매인이 지정됐으면 별 대신 그 소매인 깃발 밑에 <b style="color:var(--e2)">클로버</b>가 붙습니다. 범례에서 폐업·취소 시기(인허가 기준일부터 1주일·1개월·3개월·6개월·1년·전체)를 고를 수 있어요. 인허가 기록에 날짜가 없는 곳은 '전체'에서만 보입니다.</li>
     </ol>
     <h3>소매인 종류와 거리 반영</h3>
     <ul>
@@ -251,7 +254,7 @@ a{color:var(--brand)}
       <li>휴업 중인 소매인도 지정이 유지되므로 거리 계산에는 들어 있습니다(지도에는 깃발로 안 보임).</li>
       <li>경과규정(폐업 점포 자리 재지정·위치변경 때 종전 거리 적용), 부적당한 장소, 건축물 용도 요건은 판정에 반영하지 않고 지역 카드에만 적었습니다.</li>
       <li>인허가 데이터에 좌표가 없어 계산에서 빠진 소매인이 있습니다. 많이 빠진 지역은 카드에 경고가 나옵니다.</li>
-      <li>폐업·취소된 자리와 '다시 지정'은 인허가 기록의 주소(도로명 또는 지번)가 같은 건물인지로 판단합니다. 상가·단지처럼 한 건물에 점포가 여럿이면 다른 호실일 수 있어요. 임시소매 기간 만료는 넣지 않았습니다.</li>
+      <li>'다시 지정'은 인허가 주소(도로명 또는 지번)가 같은 건물이고, 양쪽 주소에 호수가 적혀 있으면 호수까지 같을 때만 잇습니다(새 지정이 폐업 처리일보다 30일 안에서 먼저 찍힌 경우 포함). 호수가 없는 주소끼리는 같은 건물의 다른 점포일 수 있어요. 같은 상호 점포가 종료 전부터 같은 자리에서 계속 영업 중이면 기록 정리로 보고 별에서 뺐고, 중복 기록과 주소와 다른 시군구에 찍힌 좌표도 걸렀습니다. 임시소매 기간 만료는 넣지 않았습니다.</li>
       <li>최종 지정 여부는 관할 구청·시청·군청의 현장 실측과 심사로 결정됩니다.</li>
     </ul>
     <p class="src" id="helpSrc">출처: 행정안전부 지방행정 인허가 데이터(기타_담배소매업), 소상공인시장진흥공단 상가(상권)정보, 국가법령정보센터 자치법규, © OpenStreetMap contributors(ODbL), 행정동 경계 vuski/admdongkor, 지도 Kakao</p>
@@ -305,7 +308,7 @@ const KIND_SHORT = ["일반", "구내", "임시·특례", "미상"];
 const K_GENERAL = 0, K_GUNAE = 1, K_TEMP = 2, K_UNKNOWN = 3;
 const S = { meta: null, areas: [], ret: null, nets: new Map(), loading: new Map(), stamp: 0, colors: {},
             nocoords: null, show: { roads: true, shops: true, kinds: [true, true, true, true], ended: [true, true, true] }, pendingPick: null, userPicked: false,
-            ends: new Map(), endLoading: new Map(), reBy: new Map(), endYears: 3, sheetRet: -1 };
+            ends: new Map(), endLoading: new Map(), reBy: new Map(), endPeriod: "3m", sheetRet: -1 };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n) => Math.round(n).toLocaleString("ko-KR");
@@ -523,8 +526,15 @@ function retailersNear(x, y, r, includeRest = true) {
 /* ---------- 지정이 끝난 자리 (data/ended/<지역>.json, 화면에 보이는 지역만) ---------- */
 const END_ST = ["폐업", "지정취소", "직권취소"];
 const END_WHY = ["소매인이 폐업 신고로 지정을 스스로 끝낸 자리(지정 해지)", "관할 관청이 담배소매인 지정을 취소한 자리", "관할 관청이 직권으로 지정을 취소한 자리"];
-const ymdTxt = (n) => (n ? `${String(n).slice(0, 4)}.${String(n).slice(4, 6)}.${String(n).slice(6, 8)}` : "—");
-const endCut = () => (S.endYears && S.meta ? +S.meta.localdata.replace(/-/g, "") - S.endYears * 10000 : 0);
+const ymdTxt = (n) => (n ? `${String(n).slice(0, 4)}.${String(n).slice(4, 6)}.${String(n).slice(6, 8)}` : "미상");
+// 폐업·취소 시기: 인허가 기준일부터 거꾸로 [개월, 일] (06_export_web.py 의 END_PERIOD 와 같게)
+const END_PERIOD = { "7d": [0, 7], "1m": [1, 0], "3m": [3, 0], "6m": [6, 0], "12m": [12, 0], all: null };
+function endCut() {
+  const p = END_PERIOD[S.endPeriod];
+  if (!p || !S.meta) return 0;
+  const [y, m, d] = S.meta.localdata.split("-").map(Number), t = new Date(y, m - 1 - p[0], d - p[1]);
+  return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate();
+}
 function indexEnded(ai, o) {
   o.grid = new Map();
   for (let j = 0; j < o.x.length; j++) {
@@ -1053,7 +1063,7 @@ function reentryHtml(i) {
   const [ai, j] = l[0], o = S.ends.get(ai);
   return `<div class="clover"><p><svg class="ico" aria-hidden="true"><use href="#cloverIcon" style="fill:var(--e2)"/></svg><b>폐업·취소된 자리에 다시 지정된 곳</b><br><span class="note">같은 건물에서 ${ymdTxt(o.e[j])}에 ${END_ST[o.s[j]]}된 뒤 ${esc(S.ret.date[i] || "—")}에 이 소매인이 지정됐어요${l.length > 1 ? ` (이전 기록 ${l.length}건)` : ""}.</span></p>
     <ul class="near">${l.slice(0, 8).map(([a2, j2]) => endLine(a2, j2)).join("")}</ul>${l.length > 8 ? `<p class="note">외 ${l.length - 8}건</p>` : ""}
-    <p class="note">인허가 기록의 주소가 같은 건물인지로 판단했어요. 상가·단지처럼 점포가 여럿인 건물은 다른 호실일 수 있어요.</p></div>`;
+    <p class="note">인허가 주소가 같은 건물이고, 양쪽에 호수가 있으면 호수까지 같은 기록만 이었어요.</p></div>`;
 }
 function renderRetailer(i) {
   const r = S.ret, a = S.areas[r.area[i]], k = kindOf(i);
@@ -1076,12 +1086,12 @@ function renderEnded(list) {
   placeMarkers(null, [o.x[j], o.y[j]]);
   const ll = xyToLatLng(o.x[j], o.y[j]);
   const nearNow = retailersNear(o.x[j], o.y[j], a ? a.dist : 100, false);
-  openSheet(`end${st ? 1 : 0}`, `${st ? "지정이 취소된 자리" : "폐업한 자리"} · ${ymdTxt(o.e[j])}`, esc(o.n[j] || "(이름 없음)"),
-    "그 뒤 같은 건물에 새로 지정된 소매인은 없어요 (인허가 기준)", `
+  openSheet(`end${st ? 1 : 0}`, `${st ? "지정이 취소된 자리" : "폐업한 자리"} · ${o.e[j] ? ymdTxt(o.e[j]) : "날짜 미상"}`, esc(o.n[j] || "(이름 없음)"),
+    "그 뒤 이 자리(같은 건물·호수)에 새로 지정된 소매인은 없어요 (인허가 기준)", `
     <dl class="kv"><dt>상태</dt><dd><span class="kb e${st}">${END_ST[st]}</span>${END_WHY[st]}</dd>
       <dt>주소</dt><dd>${esc(o.a[j])}</dd>
       <dt>지정</dt><dd><span class="kb k${o.k[j]}">${KIND_SHORT[o.k[j]]}</span>${ymdTxt(o.d[j])}</dd>
-      <dt>${st ? "취소일" : "폐업일"}</dt><dd>${ymdTxt(o.e[j])}</dd></dl>
+      <dt>${st ? "취소일" : "폐업일"}</dt><dd>${o.e[j] ? ymdTxt(o.e[j]) : "미상 (인허가 기록에 날짜가 없어요)"}</dd></dl>
     ${a && a.trans ? `<p class="warn">이 지역 규칙에 경과규정이 있어요: ${esc(a.trans)}까지 폐업한 점포 자리에 새로 지정하면 종전 거리를 적용합니다(1회 등 조건 있음). 구청에 확인하세요.</p>` : ""}
     <p class="note">${nearNow.length ? `지금 이 자리에서 직선 ${a ? a.dist : 100}m 안에 지정된 소매인이 ${nearNow.length}곳 있어요(가장 가까운 곳 ${esc(S.ret.name[nearNow[0][0]] || "이름 없음")} ${fmt(nearNow[0][1])}m).` : `지금 이 자리에서 직선 ${a ? a.dist : 100}m 안에 지정된 소매인이 없어요.`} 걸어서 잰 판정은 아래 버튼으로 보세요.</p>
     <div class="btns"><button type="button" id="endPick">이 자리 거리 판정 보기</button></div>
@@ -1261,16 +1271,18 @@ function initMap() {
     cb.addEventListener("change", () => { S.show.kinds[+cb.dataset.kind] = cb.checked; scheduleRedraw(); });
   for (const cb of document.querySelectorAll("[data-end]"))
     cb.addEventListener("change", () => { S.show.ended[+cb.dataset.end] = cb.checked; ensureEnded(); scheduleRedraw(); });
-  for (const b of document.querySelectorAll("[data-years]"))
+  for (const b of document.querySelectorAll("[data-period]"))
     b.addEventListener("click", () => {
-      S.endYears = +b.dataset.years;
-      for (const o of document.querySelectorAll("[data-years]")) o.setAttribute("aria-checked", String(o === b));
+      S.endPeriod = b.dataset.period;
+      for (const o of document.querySelectorAll("[data-period]")) o.setAttribute("aria-checked", String(o === b));
       endCounts(); scheduleRedraw();
     });
 }
 /* 범례 숫자: 고른 기간의 폐업 자리 · 취소 자리 · 다시 지정된 소매인 */
 function endCounts() {
-  const c = S.meta && S.meta.endedByYears && S.meta.endedByYears[String(S.endYears)];
+  if (!S.meta) return;
+  $("endRef").textContent = S.meta.localdata;
+  const c = S.meta.endedByPeriod && S.meta.endedByPeriod[S.endPeriod];
   if (c) c.forEach((v, k) => { $("ec" + k).textContent = fmt(v); });
 }
 

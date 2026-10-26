@@ -128,7 +128,11 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
   background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='5' fill='none' stroke='%235f6b75' stroke-width='1.8'/%3E%3Cpath d='M11 11l3.5 3.5' stroke='%235f6b75' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 12px center}
 .lsearch input:focus{border-color:var(--nt-accent);outline:none;box-shadow:0 0 0 3px rgb(179 92 0 / .18)}
 .lrows{display:grid;gap:8px}
-.nchip.find{border-style:dashed}
+.nsearch{flex-shrink:0}
+.nsearch input{width:170px;min-height:32px;padding:0 10px 0 30px;border:1.5px solid var(--nt-accent);border-radius:999px;font:inherit;font-size:13px;color:var(--ink);
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='5' fill='none' stroke='%23b35c00' stroke-width='2'/%3E%3Cpath d='M11 11l3.5 3.5' stroke='%23b35c00' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 10px center}
+.nsearch input:focus{outline:none;box-shadow:0 0 0 3px rgb(179 92 0 / .2)}
+@media (max-width:520px){.nsearch input{width:136px;padding-right:6px}}
 
 /* 안내 알약, 배지 */
 #hint{position:absolute;z-index:15;left:50%;top:12px;transform:translateX(-50%);background:var(--bar);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;border-radius:999px;box-shadow:0 4px 14px rgb(0 0 0 / .25);white-space:nowrap;pointer-events:none}
@@ -235,6 +239,7 @@ a{color:var(--brand)}
   </form>
   <button class="tbtn" id="goBtn" type="button">위치이동</button>
   <button class="tbtn ghost" id="meBtn" type="button">내 위치</button>
+  <button class="tbtn ghost" id="noticeBtn" type="button" aria-label="공지: 지정 신청 공고·폐업취소 목록">공지</button>
   <button class="tbtn ghost round" id="helpBtn" type="button" aria-label="도움말">?</button>
 </header>
 
@@ -243,6 +248,7 @@ a{color:var(--brand)}
 
   <div id="notice" role="region" aria-label="공지" hidden>
     <span class="ntag">공지</span>
+    <div class="nsearch"><input id="noticeQ" type="search" list="noticeAreas" autocomplete="off" placeholder="지역 검색" aria-label="지정 신청 공고·폐업취소 지역 검색"><datalist id="noticeAreas"></datalist></div>
     <div class="nchips" id="noticeChips"></div>
     <button id="noticeClose" type="button" aria-label="공지 닫기">✕</button>
   </div>
@@ -1189,7 +1195,7 @@ function relatedNotices(name, addr, area) {
   return S.notices.items.filter((n) => n.area === area.name
     && ((nk.length >= 4 && nameKey(n.title).includes(nk)) || (n.addr && ak.includes(n.addr.replace(/\s/g, "")))));
 }
-function showNotice() {
+function showNotice(force) {
   if (!S.meta) return;
   const chips = [], ns = noticesSince(14), open = (S.notices ? S.notices.items : []).filter(openNow);
   if (ns.length || open.length) {
@@ -1202,18 +1208,26 @@ function showNotice() {
     chips.push(`<button class="nchip" type="button" data-open="ended"><svg aria-hidden="true"><use href="#starIcon" style="fill:var(--e1)"/></svg><b>새 폐업·취소</b><span class="em">${fmt(c[0] + c[1])}곳</span><span>인허가 ${mmdd(isoDay(new Date(y, m - 1, d - 7)))}~${mmdd(S.meta.localdata)}</span></button>`);
   }
   if (!chips.length) return;
-  chips.push(`<button class="nchip find" type="button" data-open="search"><svg aria-hidden="true" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><b>지역으로 찾기</b></button>`);
   const key = `${S.meta.localdata}|${S.notices ? S.notices.fetched : ""}`;
-  try { if (localStorage.getItem("noticeSeen") === key) return; } catch { /* 저장소를 못 쓰면 늘 보임 */ }
+  if (!force) try { if (localStorage.getItem("noticeSeen") === key) return; } catch { /* 저장소를 못 쓰면 늘 보임 */ }
   const show = (on) => {
     $("notice").hidden = !on;
     document.querySelector(".mapwrap").classList.toggle("has-notice", on);
     map.relayout(); scheduleRedraw();
   };
   $("noticeChips").innerHTML = chips.join("");
+  $("noticeAreas").innerHTML = S.areas.map((a) => `<option value="${esc(a.name)}">`).join("");
   show(true);
-  for (const b of $("noticeChips").querySelectorAll("[data-open]"))
-    b.addEventListener("click", () => (b.dataset.open === "search" ? openLists(null, true) : openLists(b.dataset.open)));
+  for (const b of $("noticeChips").querySelectorAll("[data-open]")) b.addEventListener("click", () => openLists(b.dataset.open));
+  // 공지 띠의 검색칸: 치는 대로 목록을 열어 그 지역으로 거른다(목록 안 검색칸과 같은 검색어)
+  const nq = $("noticeQ");
+  nq.value = LIST.q;
+  nq.oninput = () => {
+    LIST.q = nq.value; LIST.endMax = 200;
+    if ($("listRows")) { if ($("listQ")) $("listQ").value = LIST.q; fillRows(); }
+    else openLists().then(() => nq.focus());
+  };
+  nq.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); if (!$("listRows")) openLists(); nq.blur(); } };
   $("noticeClose").onclick = () => {
     show(false);
     try { localStorage.setItem("noticeSeen", key); } catch { /* 이번만 닫힘 */ }
@@ -1270,7 +1284,7 @@ function renderLists(loading) {
   });
   if ($("inViewBtn")) $("inViewBtn").addEventListener("click", () => { LIST.inView = !LIST.inView; renderLists(); });
   // 검색은 결과 칸만 다시 그려 입력 중 글자·커서를 유지한다
-  $("listQ").addEventListener("input", (e) => { LIST.q = e.target.value; LIST.endMax = 200; fillRows(loading); });
+  $("listQ").addEventListener("input", (e) => { LIST.q = e.target.value; LIST.endMax = 200; $("noticeQ").value = LIST.q; fillRows(loading); });
   fillRows(loading);
 }
 function fillRows(loading) {
@@ -1521,6 +1535,7 @@ function initMap() {
   $("results").addEventListener("mousedown", (ev) => { const li = ev.target.closest("li[data-j]"); if (li) { ev.preventDefault(); choose(results[+li.dataset.j]); } });
   q.addEventListener("blur", () => setTimeout(() => { $("results").hidden = true; q.setAttribute("aria-expanded", "false"); }, 150));
   $("meBtn").addEventListener("click", locateMe);
+  $("noticeBtn").addEventListener("click", () => { if (S.meta) { showNotice(true); openLists(); } });   // 닫은 공지도 다시 연다
   $("tgRoads").addEventListener("change", (e) => { S.show.roads = e.target.checked; scheduleRedraw(); });
   $("tgShops").addEventListener("change", (e) => { S.show.shops = e.target.checked; scheduleRedraw(); });
   for (const cb of document.querySelectorAll("[data-kind]"))

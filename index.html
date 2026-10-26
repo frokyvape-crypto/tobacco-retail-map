@@ -15,6 +15,8 @@
   --k0:#2b8a3e; --k1:#7048e8; --k2:#e64980; --k3:#5c6670;
   /* 지정이 끝난 자리: 폐업(별·호박색) · 지정취소·직권취소(별·주홍) · 그 뒤 다시 지정(클로버·청록, 깃발 밑) */
   --e0:#f59f00; --e0-ink:#2b1d00; --e1:#d9480f; --e2:#0ca678;
+  /* 상단 공지(시군구 고시공고·새 폐업·취소) */
+  --nt-bg:#fff4d6; --nt-ink:#3d2c00; --nt-line:#f2c94c; --nt-accent:#b35c00;
   --font:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   color-scheme:light;
 }
@@ -82,6 +84,46 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 .ico{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:4px}
 .clover{display:grid;gap:8px;padding:10px 12px;border-radius:10px;background:#e6fcf5;border:1px solid #96f2d7}
 .clover > p b{color:#087f5b}
+.lgbtn{width:100%;min-height:34px;border:1.5px solid var(--line);border-radius:8px;background:var(--panel);font-size:12.5px;font-weight:700;color:var(--ink)}
+
+/* 상단 공지 띠 */
+#notice{position:absolute;z-index:22;left:0;right:0;top:0;height:46px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;
+  background:var(--nt-bg);color:var(--nt-ink);border-bottom:1px solid var(--nt-line);box-shadow:0 2px 8px rgb(0 0 0 / .08)}
+#notice .ntag{flex-shrink:0;font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--nt-accent);border-radius:5px;padding:2px 7px}
+#notice .nchips{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+#notice .nchips::-webkit-scrollbar{display:none}
+.nchip{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:32px;padding:0 10px;border:1px solid var(--nt-line);border-radius:999px;
+  background:rgb(255 255 255 / .75);color:var(--nt-ink);font-size:12.5px;white-space:nowrap}
+.nchip b{font-weight:800}.nchip .em{color:var(--nt-accent);font-weight:800}
+.nchip .t{overflow:hidden;text-overflow:ellipsis;max-width:min(46vw,360px)}
+.nchip svg{width:14px;height:15px;flex-shrink:0}
+#noticeClose{flex-shrink:0;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:var(--nt-ink);font-size:15px}
+.mapwrap.has-notice #map{top:46px}   /* 공지 띠가 지도 조작 단추를 가리지 않게 지도를 그만큼 내림 */
+.mapwrap.has-notice #legend{top:56px}
+.mapwrap.has-notice #hint{top:56px}
+@media (min-width:900px){.mapwrap.has-notice #legend{top:auto}}
+
+/* 공고·폐업 목록 */
+.sheethead.ntc{background:var(--nt-accent)}
+.tabs{display:flex;gap:4px;background:var(--soft);border-radius:9px;padding:3px}
+.tabs button{flex:1;min-height:34px;border:0;border-radius:7px;background:transparent;font-size:13px;font-weight:700;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{min-height:30px;padding:0 11px;border:1.5px solid var(--line);border-radius:999px;background:var(--panel);font-size:12.5px;font-weight:700;color:var(--muted)}
+.chips button[aria-pressed="true"]{border-color:var(--ink);color:var(--ink)}
+.rows{list-style:none;display:grid;gap:2px;margin:0 -6px}
+.rows li{display:grid;gap:3px;padding:10px 8px;border-radius:9px}
+.rows li.go{cursor:pointer}.rows li.go:hover,.rows li.go:focus-visible{background:var(--soft)}
+.rows .top{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:12px;color:var(--muted)}
+.rows .top b{color:var(--ink);font-size:12.5px}
+.rows .ttl{font-weight:700;font-size:13.5px;overflow-wrap:anywhere}
+.rows .sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.rows .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.rows .acts a,.rows .acts button{min-height:30px;padding:0 11px;border-radius:8px;border:1.5px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:700;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center}
+.rows .acts button:disabled{color:var(--muted);cursor:default}
+.dday{font-weight:800;color:var(--nt-accent)}.dday.over{color:var(--muted);font-weight:700}
+.kb.n0{background:var(--nt-accent)}.kb.n1{background:#1971c2}.kb.n2{background:var(--e1)}.kb.n3{background:var(--k3)}
+.back{margin-bottom:-4px;justify-self:start}
 
 /* 안내 알약, 배지 */
 #hint{position:absolute;z-index:15;left:50%;top:12px;transform:translateX(-50%);background:var(--bar);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;border-radius:999px;box-shadow:0 4px 14px rgb(0 0 0 / .25);white-space:nowrap;pointer-events:none}
@@ -194,6 +236,12 @@ a{color:var(--brand)}
 <div class="mapwrap">
   <div id="map" role="application" aria-label="카카오 지도 위 담배소매인 지정 가능성"></div>
 
+  <div id="notice" role="region" aria-label="공지" hidden>
+    <span class="ntag">공지</span>
+    <div class="nchips" id="noticeChips"></div>
+    <button id="noticeClose" type="button" aria-label="공지 닫기">✕</button>
+  </div>
+
   <section id="legend" data-open="true" aria-label="범례">
     <button id="legendBtn" type="button" aria-expanded="true"><span>범례 · 도로 색과 깃발</span><span class="arr">▾</span></button>
     <div id="legendBody">
@@ -217,6 +265,7 @@ a{color:var(--brand)}
       <label class="kl"><input type="checkbox" data-end="0" checked><svg class="flag" aria-hidden="true"><use href="#starIcon" style="fill:var(--e0)"/></svg><span><b>폐업 (지정 해지)</b><small>소매인이 폐업 신고로 그만둔 자리</small></span><span class="c" id="ec0"></span></label>
       <label class="kl"><input type="checkbox" data-end="1" checked><svg class="flag" aria-hidden="true"><use href="#starIcon" style="fill:var(--e1)"/></svg><span><b>지정취소·직권취소</b><small>관청이 지정을 취소한 자리</small></span><span class="c" id="ec1"></span></label>
       <label class="kl"><input type="checkbox" data-end="2" checked><svg class="flag" aria-hidden="true"><use href="#cloverIcon" style="fill:var(--e2)"/></svg><span><b>다시 지정된 자리</b><small>폐업·취소 뒤 같은 건물에 새 소매인 (깃발 밑)</small></span><span class="c" id="ec2"></span></label>
+      <button class="lgbtn" type="button" id="endListBtn">폐업·취소 목록 · 지정 신청 공고 보기</button>
       <div class="tg"><label><input type="checkbox" id="tgRoads" checked> 도로 색</label><label><input type="checkbox" id="tgShops" checked> 소매인 깃발</label></div>
     </div>
   </section>
@@ -240,6 +289,7 @@ a{color:var(--brand)}
       <li>지정된 소매인은 깃발로 보이고, 종류에 따라 색이 다릅니다: <b style="color:var(--k0)">일반</b>·<b style="color:var(--k1)">구내</b>·<b style="color:var(--k2)">임시·특례</b>·<b style="color:var(--k3)">종류 미상</b>. 범례에서 종류별로 켜고 끌 수 있어요.</li>
       <li>도로나 깃발을 누르거나 위에서 주소를 검색하면 판정과 거리가 크게 나옵니다. 로드뷰로 현장도 볼 수 있습니다.</li>
       <li>지정이 끝난 자리는 별로 보입니다: <b style="color:#b07000">★ 폐업(지정 해지)</b>·<b style="color:var(--e1)">★ 지정취소·직권취소</b>. 그 뒤 같은 건물에 새 소매인이 지정됐으면 별 대신 그 소매인 깃발 밑에 <b style="color:var(--e2)">클로버</b>가 붙습니다. 범례에서 폐업·취소 시기(인허가 기준일부터 1주일·1개월·3개월·6개월·1년·전체)를 고를 수 있어요. 인허가 기록에 날짜가 없는 곳은 '전체'에서만 보입니다.</li>
+      <li>위쪽 <b>공지</b> 띠에는 시·구청 고시공고에 올라온 담배소매인 <b>지정 신청 공고</b>(폐업·취소된 자리 신청 안내, 지정 신청 접수 등)와 이번 인허가 자료의 새 폐업·취소가 나옵니다. 누르면 목록이 열리고, 항목을 누르면 그 자리로 바로 이동해요. 범례의 '폐업·취소 목록' 단추로도 열 수 있습니다.</li>
     </ol>
     <h3>소매인 종류와 거리 반영</h3>
     <ul>
@@ -547,6 +597,7 @@ function indexEnded(ai, o) {
   S.ends.set(ai, o);
 }
 function loadEndedArea(a) {
+  if (S.ends.has(a.i)) return Promise.resolve();
   if (S.endLoading.has(a.i)) return S.endLoading.get(a.i);
   const p = getJSON(`data/ended/${a.i}.json`).then((o) => { indexEnded(a.i, o); S.endLoading.delete(a.i); scheduleRedrawSoon(); })
     .catch((err) => { S.endLoading.delete(a.i); console.error(err); });
@@ -1092,6 +1143,7 @@ function renderEnded(list) {
       <dt>주소</dt><dd>${esc(o.a[j])}</dd>
       <dt>지정</dt><dd><span class="kb k${o.k[j]}">${KIND_SHORT[o.k[j]]}</span>${ymdTxt(o.d[j])}</dd>
       <dt>${st ? "취소일" : "폐업일"}</dt><dd>${o.e[j] ? ymdTxt(o.e[j]) : "미상 (인허가 기록에 날짜가 없어요)"}</dd></dl>
+    ${relatedNotices(o.n[j], o.a[j], a).slice(0, 3).map((n) => `<div class="warn"><b>관련 공고 · ${esc(n.area)} ${mmdd(n.date)}</b> ${ddayHtml(n)}<br>${esc(n.title)}${n.period && n.period.length ? `<br>신청기간 ${n.period[0]} ~ ${n.period[1]}` : ""}<br><a href="${esc(n.url)}" target="_blank" rel="noopener">공고 원문 보기</a></div>`).join("")}
     ${a && a.trans ? `<p class="warn">이 지역 규칙에 경과규정이 있어요: ${esc(a.trans)}까지 폐업한 점포 자리에 새로 지정하면 종전 거리를 적용합니다(1회 등 조건 있음). 구청에 확인하세요.</p>` : ""}
     <p class="note">${nearNow.length ? `지금 이 자리에서 직선 ${a ? a.dist : 100}m 안에 지정된 소매인이 ${nearNow.length}곳 있어요(가장 가까운 곳 ${esc(S.ret.name[nearNow[0][0]] || "이름 없음")} ${fmt(nearNow[0][1])}m).` : `지금 이 자리에서 직선 ${a ? a.dist : 100}m 안에 지정된 소매인이 없어요.`} 걸어서 잰 판정은 아래 버튼으로 보세요.</p>
     <div class="btns"><button type="button" id="endPick">이 자리 거리 판정 보기</button></div>
@@ -1100,6 +1152,176 @@ function renderEnded(list) {
     ${a ? areaDetails(a) : ""}`);
   bindAreaButtons();
   $("endPick").addEventListener("click", () => pickAt(o.x[j], o.y[j], `${o.n[j] || ""} 자리`));
+}
+
+/* ---------- 공지: 시군구 고시공고(data/notices.json) · 새 폐업·취소 ---------- */
+// 공고 종류 → 묶음: 0 지정 신청 받는 곳, 1 지정 신청 들어옴, 2 취소·처분, 3 기타
+const NT_GROUP = { "폐업 뒤 지정신청": 0, "취소 뒤 지정신청": 0, "신축 건물 지정신청": 0, "지정신청 접수": 1, "취소·처분": 2, "기타": 3 };
+const NT_LABEL = ["지정 신청 받는 곳", "지정 신청 들어옴", "취소·처분", "기타 공고"];
+const NT_WHY = [
+  "폐업·지정취소로 생긴 자리(또는 새 건물)에 담배소매인 지정 신청을 받는다는 공고예요. 신청자가 여럿이면 사실조사 뒤 추첨하는 곳이 많아요. 자격과 서류는 공고 원문을 확인하세요.",
+  "이 자리에 담배소매인 지정 신청이 들어와 알리는 공고예요. 자세한 내용은 공고 원문을 확인하세요.",
+  "담배소매인 지정취소·영업정지 같은 행정처분 관련 공고예요.",
+  "담배소매인 관련 공고예요.",
+];
+const ntGroup = (n) => NT_GROUP[n.kind] ?? 3;
+const isoDay = (t) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+const daysAgo = (d) => { const t = new Date(); t.setDate(t.getDate() - d); return isoDay(t); };
+const mmdd = (s) => (s ? `${+s.slice(5, 7)}.${+s.slice(8, 10)}` : "");
+function ddayHtml(n) {
+  if (!n.period || !n.period.length) return "";
+  const left = Math.round((new Date(n.period[1] + "T00:00:00") - new Date(isoDay(new Date()) + "T00:00:00")) / 864e5);
+  return left >= 0 ? `<span class="dday">신청 마감 ${left ? "D-" + left : "오늘"}</span>` : `<span class="dday over">신청 마감됨</span>`;
+}
+const noticesSince = (days) => (S.notices ? S.notices.items : []).filter((n) => n.date >= daysAgo(days));
+// 지금 신청할 수 있는 공고: 지정 신청 받는 공고이고 신청기간 끝이 오늘 이후(기간을 못 읽은 공고는 공고일 7일 안)
+const openNow = (n) => ntGroup(n) === 0 && (n.period && n.period.length ? n.period[1] >= isoDay(new Date()) : n.date >= daysAgo(7));
+const nameKey = (s) => String(s || "").replace(/[\s()\[\]·.,\-_/]|주식회사|\(주\)|㈜/g, "").toLowerCase();
+/* 폐업·취소 자리와 같은 곳을 다룬 공고(같은 시군구 · 공고 제목에 상호가 있거나 공고 장소가 주소에 들어 있음) */
+function relatedNotices(name, addr, area) {
+  if (!S.notices || !area) return [];
+  const nk = nameKey(name), ak = String(addr || "").replace(/\s/g, "");
+  return S.notices.items.filter((n) => n.area === area.name
+    && ((nk.length >= 4 && nameKey(n.title).includes(nk)) || (n.addr && ak.includes(n.addr.replace(/\s/g, "")))));
+}
+function showNotice() {
+  if (!S.meta) return;
+  const chips = [], ns = noticesSince(14), open = (S.notices ? S.notices.items : []).filter(openNow);
+  if (ns.length || open.length) {
+    const top = open[0] || ns[0];
+    chips.push(`<button class="nchip" type="button" data-open="notices"><b>지정 신청 공고</b>${open.length ? `<span>지금 신청 가능</span><span class="em">${fmt(open.length)}곳</span>` : ""}<span>최근 2주 ${fmt(ns.length)}건</span><span class="t">· ${esc(top.area)} ${esc(top.addr || top.title)} (${mmdd(top.date)})</span></button>`);
+  }
+  const c = S.meta.endedByPeriod && S.meta.endedByPeriod["7d"];
+  if (c && c[0] + c[1]) {
+    const [y, m, d] = S.meta.localdata.split("-").map(Number);
+    chips.push(`<button class="nchip" type="button" data-open="ended"><svg aria-hidden="true"><use href="#starIcon" style="fill:var(--e1)"/></svg><b>새 폐업·취소</b><span class="em">${fmt(c[0] + c[1])}곳</span><span>인허가 ${mmdd(isoDay(new Date(y, m - 1, d - 7)))}~${mmdd(S.meta.localdata)}</span></button>`);
+  }
+  if (!chips.length) return;
+  const key = `${S.meta.localdata}|${S.notices ? S.notices.fetched : ""}`;
+  try { if (localStorage.getItem("noticeSeen") === key) return; } catch { /* 저장소를 못 쓰면 늘 보임 */ }
+  const show = (on) => {
+    $("notice").hidden = !on;
+    document.querySelector(".mapwrap").classList.toggle("has-notice", on);
+    map.relayout(); scheduleRedraw();
+  };
+  $("noticeChips").innerHTML = chips.join("");
+  show(true);
+  for (const b of $("noticeChips").querySelectorAll("[data-open]")) b.addEventListener("click", () => openLists(b.dataset.open));
+  $("noticeClose").onclick = () => {
+    show(false);
+    try { localStorage.setItem("noticeSeen", key); } catch { /* 이번만 닫힘 */ }
+  };
+}
+
+/* 목록(공고 · 최근 1년 폐업·취소) — 누르면 그 자리로 이동 */
+const LIST = { tab: "notices", ntDays: 14, ntGroup: 9, endMax: 200, inView: false, rows: [] };   // ntGroup 9 = 지금 신청 가능
+async function openLists(tab) {
+  if (tab) LIST.tab = tab;
+  if (LIST.tab === "ended" && !S.endList) {
+    renderLists(true);
+    try { S.endList = await getJSON("data/ended_recent.json"); } catch (err) { console.error(err); S.endList = null; }
+  }
+  renderLists();
+}
+function renderLists(loading) {
+  const tabs = `<div class="tabs" role="tablist"><button type="button" role="tab" data-tab="notices" aria-selected="${LIST.tab === "notices"}">지정 신청 공고</button><button type="button" role="tab" data-tab="ended" aria-selected="${LIST.tab === "ended"}">폐업·취소된 곳</button></div>`;
+  let body = "", lbl, ttl, sub;
+  if (LIST.tab === "notices") {
+    const N = S.notices;
+    lbl = "시군구 고시공고 · 담배소매인";
+    ttl = "지정 신청 공고";
+    sub = N ? `${N.boards}개 시군구 게시판에서 ${esc(N.fetched)}에 모음` : "공고를 불러오지 못했어요";
+    LIST.rows = LIST.ntGroup === 9 ? (N ? N.items.filter(openNow) : [])
+      : noticesSince(LIST.ntDays).filter((n) => LIST.ntGroup < 0 || ntGroup(n) === LIST.ntGroup);
+    const dayChips = LIST.ntGroup === 9 ? "" : [[7, "1주일"], [14, "2주"], [30, "1개월"], [60, "2개월"]].map(([d, t]) => `<button type="button" data-ntdays="${d}" aria-pressed="${LIST.ntDays === d}">${t}</button>`).join("");
+    const grpChips = [[9, "지금 신청 가능"], [-1, "전체"], [0, NT_LABEL[0]], [1, NT_LABEL[1]], [2, NT_LABEL[2]]].map(([g, t]) => `<button type="button" data-ntgroup="${g}" aria-pressed="${LIST.ntGroup === g}">${t}</button>`).join("");
+    body = `${tabs}<div class="chips">${grpChips}</div>${dayChips ? `<div class="chips">${dayChips}</div>` : ""}
+      ${LIST.rows.length ? `<ul class="rows">${LIST.rows.slice(0, 200).map((n, k) => `<li>
+        <div class="top"><span class="kb n${ntGroup(n)}">${NT_LABEL[ntGroup(n)]}</span><b>${esc(n.sido.replace(/특별시|광역시|도$/, ""))} ${esc(n.area)}</b><span>${mmdd(n.date)} 공고</span>${ddayHtml(n)}</div>
+        <div class="ttl">${esc(n.title)}</div>
+        <div class="sub">${n.addr ? `장소 ${esc(n.addr)}` : "장소는 공고 원문에서 확인"}${n.period && n.period.length ? ` · 신청 ${mmdd(n.period[0])}~${mmdd(n.period[1])}` : ""}${n.no ? ` · ${esc(n.no)}` : ""}</div>
+        <div class="acts"><button type="button" data-nt="${k}"${n.addr ? "" : " disabled"}>위치로 이동</button><a href="${esc(n.url)}" target="_blank" rel="noopener">공고 원문</a></div></li>`).join("")}</ul>` : `<p class="note">이 조건의 공고가 없어요.</p>`}
+      ${N && N.missing.length ? `<p class="note">게시판을 자동으로 읽지 못한 곳: ${N.missing.map(esc).join(", ")}. 이 지역은 시·구청 고시공고에서 직접 확인해 주세요.</p>` : ""}
+      <p class="note">제목과 첨부 공고문(hwpx)에서 장소·신청기간을 읽었어요. 정확한 내용은 공고 원문을 확인하세요.</p>`;
+  } else {
+    const L = S.endList, cut = Math.max(endCut(), (() => { const [y, m, d] = S.meta.localdata.split("-").map(Number), t = new Date(y, m - 13, d); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); })());
+    lbl = `인허가 기준일 ${S.meta.localdata}까지`;
+    ttl = "폐업·취소된 곳";
+    sub = "누르면 그 자리로 이동해요";
+    const periodChips = Object.keys(END_PERIOD).map((p) => `<button type="button" data-lperiod="${p}" aria-pressed="${S.endPeriod === p}">${{ "7d": "1주일", "1m": "1개월", "3m": "3개월", "6m": "6개월", "12m": "1년", all: "전체" }[p]}</button>`).join("");
+    LIST.rows = [];
+    if (L) {
+      const v = aff ? aff.view : null;
+      for (let k = 0; k < L.e.length; k++) {
+        if (L.e[k] < cut) continue;
+        if (LIST.inView && v) { const [x, y] = TM(L.la[k], L.lo[k]); if (x < v[0] || x > v[2] || y < v[1] || y > v[3]) continue; }
+        LIST.rows.push(k);
+      }
+    }
+    body = `${tabs}<div class="chips">${periodChips}</div><div class="chips"><button type="button" id="inViewBtn" aria-pressed="${LIST.inView}">지금 지도에 보이는 곳만</button></div>
+      ${loading ? `<p class="note">불러오는 중…</p>` : !L ? `<p class="note">목록을 불러오지 못했어요.</p>` : `<p class="note">${fmt(LIST.rows.length)}곳${S.endPeriod === "all" ? " (목록은 최근 1년까지)" : ""} · 최근 순</p>
+      <ul class="rows">${LIST.rows.slice(0, LIST.endMax).map((k) => `<li class="go" tabindex="0" data-ei="${k}">
+        <div class="top"><span class="kb e${L.s[k]}">${END_ST[L.s[k]]}</span><b>${ymdTxt(L.e[k])}</b>${L.r[k] >= 0 ? `<span><svg class="ico" aria-hidden="true"><use href="#cloverIcon" style="fill:var(--e2)"/></svg>다시 지정됨</span>` : ""}</div>
+        <div class="ttl">${esc(L.n[k] || "(이름 없음)")}</div><div class="sub">${esc(L.ad[k])}</div></li>`).join("")}</ul>
+      ${LIST.rows.length > LIST.endMax ? `<button class="lgbtn" type="button" id="moreBtn">더 보기 (${fmt(LIST.rows.length - LIST.endMax)}곳 남음)</button>` : ""}`}`;
+  }
+  openSheet("ntc", lbl, ttl, sub, body);
+  const SB = $("sheetBody");
+  for (const b of SB.querySelectorAll("[data-tab]")) b.addEventListener("click", () => openLists(b.dataset.tab));
+  for (const b of SB.querySelectorAll("[data-ntdays]")) b.addEventListener("click", () => { LIST.ntDays = +b.dataset.ntdays; renderLists(); });
+  for (const b of SB.querySelectorAll("[data-ntgroup]")) b.addEventListener("click", () => { LIST.ntGroup = +b.dataset.ntgroup; renderLists(); });
+  for (const b of SB.querySelectorAll("[data-nt]")) b.addEventListener("click", () => goNotice(LIST.rows[+b.dataset.nt]));
+  for (const b of SB.querySelectorAll("[data-lperiod]")) b.addEventListener("click", () => {
+    S.endPeriod = b.dataset.lperiod; LIST.endMax = 200;
+    for (const o of document.querySelectorAll("[data-period]")) o.setAttribute("aria-checked", String(o.dataset.period === S.endPeriod));
+    endCounts(); scheduleRedraw(); renderLists();
+  });
+  for (const li of SB.querySelectorAll("[data-ei]")) {
+    const go = () => goEnded(+li.dataset.ei);
+    li.addEventListener("click", go);
+    li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  }
+  if ($("inViewBtn")) $("inViewBtn").addEventListener("click", () => { LIST.inView = !LIST.inView; renderLists(); });
+  if ($("moreBtn")) $("moreBtn").addEventListener("click", () => { LIST.endMax += 200; renderLists(); });
+}
+function goTo(lat, lng, then) {
+  map.setLevel(3);
+  map.setCenter(new kakao.maps.LatLng(lat, lng));
+  setTimeout(() => { aff = computeAffine(); then(); }, 350);
+}
+function backToList() {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "linkish back"; b.textContent = "← 목록으로";
+  b.addEventListener("click", () => openLists());
+  $("sheetBody").prepend(b);
+}
+function goEnded(k) {
+  const L = S.endList, ai = L.a[k], j = L.j[k], r = L.r[k];
+  goTo(L.la[k], L.lo[k], () => {
+    if (r >= 0) { renderRetailer(r); backToList(); return; }
+    loadEndedArea(S.areas[ai]).then(() => { renderEnded([[ai, j]]); backToList(); });
+  });
+}
+function goNotice(n) {
+  if (!n || !n.addr) return;
+  geocoder.addressSearch(`${n.sido} ${n.area} ${n.addr}`, (res, st) => {
+    if (st !== kakao.maps.services.Status.OK || !res[0]) { setHint("공고의 장소를 지도에서 찾지 못했어요. 공고 원문을 확인해 주세요"); setTimeout(() => setHint(""), 3500); return; }
+    const lat = +res[0].y, lng = +res[0].x;
+    goTo(lat, lng, () => renderNotice(n, lat, lng));
+  });
+}
+function renderNotice(n, lat, lng) {
+  const [x, y] = TM(lat, lng), g = ntGroup(n);
+  placeMarkers([x, y], null);
+  openSheet("ntc", `${esc(n.sido.replace(/특별시|광역시/, ""))} ${esc(n.area)} · ${mmdd(n.date)} 공고`, esc(n.title), NT_LABEL[g], `
+    <dl class="kv"><dt>장소</dt><dd>${esc(n.addr)}</dd>
+      <dt>신청기간</dt><dd>${n.period && n.period.length ? `${n.period[0]} ~ ${n.period[1]} ${ddayHtml(n)}` : "공고 원문에서 확인"}</dd>
+      ${n.no ? `<dt>공고번호</dt><dd>${esc(n.no)}</dd>` : ""}${n.dept ? `<dt>담당</dt><dd>${esc(n.dept)}</dd>` : ""}</dl>
+    <p class="note">${NT_WHY[g]}</p>
+    <div class="btns"><a class="primary" href="${esc(n.url)}" target="_blank" rel="noopener">공고 원문 보기</a><button type="button" id="ntPick">이 자리 거리 판정 보기</button></div>
+    ${linkBtns(lat, lng, n.addr)}`);
+  $("ntPick").addEventListener("click", () => pickAt(x, y, n.addr));
+  backToList();
 }
 function renderNone(x, y) {
   placeMarkers([x, y], null);
@@ -1242,6 +1464,7 @@ function initMap() {
       $("helpSrc").textContent += ` · 인허가 기준 ${meta.localdata}, 도로망 ${meta.osm}`;
       endCounts();
       ensureNets(); ensureEnded(); scheduleRedraw();
+      getJSON("data/notices.json").then((n) => { S.notices = n; }).catch(() => { S.notices = null; }).finally(showNotice);
     })
     .catch((err) => { console.error(err); setHint("판정 데이터를 불러오지 못했어요. 새로고침해 주세요"); });
 
@@ -1271,6 +1494,7 @@ function initMap() {
     cb.addEventListener("change", () => { S.show.kinds[+cb.dataset.kind] = cb.checked; scheduleRedraw(); });
   for (const cb of document.querySelectorAll("[data-end]"))
     cb.addEventListener("change", () => { S.show.ended[+cb.dataset.end] = cb.checked; ensureEnded(); scheduleRedraw(); });
+  $("endListBtn").addEventListener("click", () => openLists("ended"));
   for (const b of document.querySelectorAll("[data-period]"))
     b.addEventListener("click", () => {
       S.endPeriod = b.dataset.period;

@@ -123,7 +123,12 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 .rows .acts button:disabled{color:var(--muted);cursor:default}
 .dday{font-weight:800;color:var(--nt-accent)}.dday.over{color:var(--muted);font-weight:700}
 .kb.n0{background:var(--nt-accent)}.kb.n1{background:#1971c2}.kb.n2{background:var(--e1)}.kb.n3{background:var(--k3)}
-.back{margin-bottom:-4px;justify-self:start}
+/* 목록으로 돌아가기: 카드 본문 맨 위에 붙어 있는 큰 단추(스크롤해도 보임) */
+.backbar{position:sticky;top:-14px;   /* 본문 위 여백(14px)만큼 올려 맨 위에 딱 붙임 */z-index:2;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;margin:-14px 0 0;
+  border:0;border-radius:0 0 12px 12px;background:var(--nt-accent);color:#fff;font-size:15px;font-weight:800;letter-spacing:-.01em;box-shadow:0 3px 10px rgb(0 0 0 / .18)}
+.backbar svg{width:18px;height:18px}
+.backbar:hover{filter:brightness(1.08)}
+.backbar:focus-visible{outline:3px solid #f1c40f;outline-offset:-3px}
 .lsearch input{width:100%;min-height:40px;padding:8px 12px 8px 36px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:14.5px;color:var(--ink);
   background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='5' fill='none' stroke='%235f6b75' stroke-width='1.8'/%3E%3Cpath d='M11 11l3.5 3.5' stroke='%235f6b75' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 12px center}
 .lsearch input:focus{border-color:var(--nt-accent);outline:none;box-shadow:0 0 0 3px rgb(179 92 0 / .18)}
@@ -1338,7 +1343,8 @@ function goTo(lat, lng, then) {
 }
 function backToList() {
   const b = document.createElement("button");
-  b.type = "button"; b.className = "linkish back"; b.textContent = "← 목록으로";
+  b.type = "button"; b.className = "backbar";
+  b.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>목록으로 돌아가기`;
   b.addEventListener("click", () => openLists());
   $("sheetBody").prepend(b);
 }

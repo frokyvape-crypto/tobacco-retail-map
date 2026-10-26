@@ -124,6 +124,11 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #f1c4
 .dday{font-weight:800;color:var(--nt-accent)}.dday.over{color:var(--muted);font-weight:700}
 .kb.n0{background:var(--nt-accent)}.kb.n1{background:#1971c2}.kb.n2{background:var(--e1)}.kb.n3{background:var(--k3)}
 .back{margin-bottom:-4px;justify-self:start}
+.lsearch input{width:100%;min-height:40px;padding:8px 12px 8px 36px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:14.5px;color:var(--ink);
+  background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='5' fill='none' stroke='%235f6b75' stroke-width='1.8'/%3E%3Cpath d='M11 11l3.5 3.5' stroke='%235f6b75' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 12px center}
+.lsearch input:focus{border-color:var(--nt-accent);outline:none;box-shadow:0 0 0 3px rgb(179 92 0 / .18)}
+.lrows{display:grid;gap:8px}
+.nchip.find{border-style:dashed}
 
 /* 안내 알약, 배지 */
 #hint{position:absolute;z-index:15;left:50%;top:12px;transform:translateX(-50%);background:var(--bar);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;border-radius:999px;box-shadow:0 4px 14px rgb(0 0 0 / .25);white-space:nowrap;pointer-events:none}
@@ -1197,6 +1202,7 @@ function showNotice() {
     chips.push(`<button class="nchip" type="button" data-open="ended"><svg aria-hidden="true"><use href="#starIcon" style="fill:var(--e1)"/></svg><b>새 폐업·취소</b><span class="em">${fmt(c[0] + c[1])}곳</span><span>인허가 ${mmdd(isoDay(new Date(y, m - 1, d - 7)))}~${mmdd(S.meta.localdata)}</span></button>`);
   }
   if (!chips.length) return;
+  chips.push(`<button class="nchip find" type="button" data-open="search"><svg aria-hidden="true" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><b>지역으로 찾기</b></button>`);
   const key = `${S.meta.localdata}|${S.notices ? S.notices.fetched : ""}`;
   try { if (localStorage.getItem("noticeSeen") === key) return; } catch { /* 저장소를 못 쓰면 늘 보임 */ }
   const show = (on) => {
@@ -1206,7 +1212,8 @@ function showNotice() {
   };
   $("noticeChips").innerHTML = chips.join("");
   show(true);
-  for (const b of $("noticeChips").querySelectorAll("[data-open]")) b.addEventListener("click", () => openLists(b.dataset.open));
+  for (const b of $("noticeChips").querySelectorAll("[data-open]"))
+    b.addEventListener("click", () => (b.dataset.open === "search" ? openLists(null, true) : openLists(b.dataset.open)));
   $("noticeClose").onclick = () => {
     show(false);
     try { localStorage.setItem("noticeSeen", key); } catch { /* 이번만 닫힘 */ }
@@ -1214,75 +1221,101 @@ function showNotice() {
 }
 
 /* 목록(공고 · 최근 1년 폐업·취소) — 누르면 그 자리로 이동 */
-const LIST = { tab: "notices", ntDays: 14, ntGroup: 9, endMax: 200, inView: false, rows: [] };   // ntGroup 9 = 지금 신청 가능
-async function openLists(tab) {
+const LIST = { tab: "notices", ntDays: 14, ntGroup: 9, endMax: 200, inView: false, rows: [], q: "" };   // ntGroup 9 = 지금 신청 가능
+async function openLists(tab, focusSearch) {
   if (tab) LIST.tab = tab;
   if (LIST.tab === "ended" && !S.endList) {
     renderLists(true);
     try { S.endList = await getJSON("data/ended_recent.json"); } catch (err) { console.error(err); S.endList = null; }
   }
   renderLists();
+  if (focusSearch) $("listQ").focus();
+}
+/* 지역 검색: 띄어 쓴 낱말이 모두 들어 있으면 맞음(시·도, 시군구, 동·도로명, 상호·제목). 공백은 무시 */
+function listMatch(hay) {
+  const q = LIST.q.trim();
+  if (!q) return true;
+  const h = hay.replace(/\s/g, "");
+  return q.split(/\s+/).every((t) => h.includes(t));
 }
 function renderLists(loading) {
   const tabs = `<div class="tabs" role="tablist"><button type="button" role="tab" data-tab="notices" aria-selected="${LIST.tab === "notices"}">지정 신청 공고</button><button type="button" role="tab" data-tab="ended" aria-selected="${LIST.tab === "ended"}">폐업·취소된 곳</button></div>`;
-  let body = "", lbl, ttl, sub;
+  const search = `<div class="lsearch"><input id="listQ" type="search" list="areaNames" autocomplete="off" value="${esc(LIST.q)}" placeholder="지역 검색 (예: 수원, 강남구, 동탄, 갈매동)" aria-label="지역으로 찾기">
+    <datalist id="areaNames">${S.areas.map((a) => `<option value="${esc(a.sido.replace(/특별시|광역시|도$/, ""))} ${esc(a.name)}">`).join("")}</datalist></div>`;
+  let ctrl, lbl, ttl, sub;
   if (LIST.tab === "notices") {
     const N = S.notices;
     lbl = "시군구 고시공고 · 담배소매인";
     ttl = "지정 신청 공고";
     sub = N ? `${N.boards}개 시군구 게시판에서 ${esc(N.fetched)}에 모음` : "공고를 불러오지 못했어요";
-    LIST.rows = LIST.ntGroup === 9 ? (N ? N.items.filter(openNow) : [])
-      : noticesSince(LIST.ntDays).filter((n) => LIST.ntGroup < 0 || ntGroup(n) === LIST.ntGroup);
     const dayChips = LIST.ntGroup === 9 ? "" : [[7, "1주일"], [14, "2주"], [30, "1개월"], [60, "2개월"]].map(([d, t]) => `<button type="button" data-ntdays="${d}" aria-pressed="${LIST.ntDays === d}">${t}</button>`).join("");
     const grpChips = [[9, "지금 신청 가능"], [-1, "전체"], [0, NT_LABEL[0]], [1, NT_LABEL[1]], [2, NT_LABEL[2]]].map(([g, t]) => `<button type="button" data-ntgroup="${g}" aria-pressed="${LIST.ntGroup === g}">${t}</button>`).join("");
-    body = `${tabs}<div class="chips">${grpChips}</div>${dayChips ? `<div class="chips">${dayChips}</div>` : ""}
-      ${LIST.rows.length ? `<ul class="rows">${LIST.rows.slice(0, 200).map((n, k) => `<li>
-        <div class="top"><span class="kb n${ntGroup(n)}">${NT_LABEL[ntGroup(n)]}</span><b>${esc(n.sido.replace(/특별시|광역시|도$/, ""))} ${esc(n.area)}</b><span>${mmdd(n.date)} 공고</span>${ddayHtml(n)}</div>
-        <div class="ttl">${esc(n.title)}</div>
-        <div class="sub">${n.addr ? `장소 ${esc(n.addr)}` : "장소는 공고 원문에서 확인"}${n.period && n.period.length ? ` · 신청 ${mmdd(n.period[0])}~${mmdd(n.period[1])}` : ""}${n.no ? ` · ${esc(n.no)}` : ""}</div>
-        <div class="acts"><button type="button" data-nt="${k}"${n.addr ? "" : " disabled"}>위치로 이동</button><a href="${esc(n.url)}" target="_blank" rel="noopener">공고 원문</a></div></li>`).join("")}</ul>` : `<p class="note">이 조건의 공고가 없어요.</p>`}
-      ${N && N.missing.length ? `<p class="note">게시판을 자동으로 읽지 못한 곳: ${N.missing.map(esc).join(", ")}. 이 지역은 시·구청 고시공고에서 직접 확인해 주세요.</p>` : ""}
-      <p class="note">제목과 첨부 공고문(hwpx)에서 장소·신청기간을 읽었어요. 정확한 내용은 공고 원문을 확인하세요.</p>`;
+    ctrl = `<div class="chips">${grpChips}</div>${dayChips ? `<div class="chips">${dayChips}</div>` : ""}`;
   } else {
-    const L = S.endList, cut = Math.max(endCut(), (() => { const [y, m, d] = S.meta.localdata.split("-").map(Number), t = new Date(y, m - 13, d); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); })());
     lbl = `인허가 기준일 ${S.meta.localdata}까지`;
     ttl = "폐업·취소된 곳";
     sub = "누르면 그 자리로 이동해요";
     const periodChips = Object.keys(END_PERIOD).map((p) => `<button type="button" data-lperiod="${p}" aria-pressed="${S.endPeriod === p}">${{ "7d": "1주일", "1m": "1개월", "3m": "3개월", "6m": "6개월", "12m": "1년", all: "전체" }[p]}</button>`).join("");
-    LIST.rows = [];
-    if (L) {
-      const v = aff ? aff.view : null;
-      for (let k = 0; k < L.e.length; k++) {
-        if (L.e[k] < cut) continue;
-        if (LIST.inView && v) { const [x, y] = TM(L.la[k], L.lo[k]); if (x < v[0] || x > v[2] || y < v[1] || y > v[3]) continue; }
-        LIST.rows.push(k);
-      }
-    }
-    body = `${tabs}<div class="chips">${periodChips}</div><div class="chips"><button type="button" id="inViewBtn" aria-pressed="${LIST.inView}">지금 지도에 보이는 곳만</button></div>
-      ${loading ? `<p class="note">불러오는 중…</p>` : !L ? `<p class="note">목록을 불러오지 못했어요.</p>` : `<p class="note">${fmt(LIST.rows.length)}곳${S.endPeriod === "all" ? " (목록은 최근 1년까지)" : ""} · 최근 순</p>
-      <ul class="rows">${LIST.rows.slice(0, LIST.endMax).map((k) => `<li class="go" tabindex="0" data-ei="${k}">
-        <div class="top"><span class="kb e${L.s[k]}">${END_ST[L.s[k]]}</span><b>${ymdTxt(L.e[k])}</b>${L.r[k] >= 0 ? `<span><svg class="ico" aria-hidden="true"><use href="#cloverIcon" style="fill:var(--e2)"/></svg>다시 지정됨</span>` : ""}</div>
-        <div class="ttl">${esc(L.n[k] || "(이름 없음)")}</div><div class="sub">${esc(L.ad[k])}</div></li>`).join("")}</ul>
-      ${LIST.rows.length > LIST.endMax ? `<button class="lgbtn" type="button" id="moreBtn">더 보기 (${fmt(LIST.rows.length - LIST.endMax)}곳 남음)</button>` : ""}`}`;
+    ctrl = `<div class="chips">${periodChips}</div><div class="chips"><button type="button" id="inViewBtn" aria-pressed="${LIST.inView}">지금 지도에 보이는 곳만</button></div>`;
   }
-  openSheet("ntc", lbl, ttl, sub, body);
+  openSheet("ntc", lbl, ttl, sub, `${tabs}${search}${ctrl}<div id="listRows" class="lrows" aria-live="polite"></div>`);
   const SB = $("sheetBody");
   for (const b of SB.querySelectorAll("[data-tab]")) b.addEventListener("click", () => openLists(b.dataset.tab));
   for (const b of SB.querySelectorAll("[data-ntdays]")) b.addEventListener("click", () => { LIST.ntDays = +b.dataset.ntdays; renderLists(); });
   for (const b of SB.querySelectorAll("[data-ntgroup]")) b.addEventListener("click", () => { LIST.ntGroup = +b.dataset.ntgroup; renderLists(); });
-  for (const b of SB.querySelectorAll("[data-nt]")) b.addEventListener("click", () => goNotice(LIST.rows[+b.dataset.nt]));
   for (const b of SB.querySelectorAll("[data-lperiod]")) b.addEventListener("click", () => {
     S.endPeriod = b.dataset.lperiod; LIST.endMax = 200;
     for (const o of document.querySelectorAll("[data-period]")) o.setAttribute("aria-checked", String(o.dataset.period === S.endPeriod));
     endCounts(); scheduleRedraw(); renderLists();
   });
-  for (const li of SB.querySelectorAll("[data-ei]")) {
+  if ($("inViewBtn")) $("inViewBtn").addEventListener("click", () => { LIST.inView = !LIST.inView; renderLists(); });
+  // 검색은 결과 칸만 다시 그려 입력 중 글자·커서를 유지한다
+  $("listQ").addEventListener("input", (e) => { LIST.q = e.target.value; LIST.endMax = 200; fillRows(loading); });
+  fillRows(loading);
+}
+function fillRows(loading) {
+  const box = $("listRows");
+  if (!box) return;
+  const qNote = LIST.q.trim() ? ` · '${esc(LIST.q.trim())}' 검색` : "";
+  if (LIST.tab === "notices") {
+    const N = S.notices;
+    LIST.rows = (LIST.ntGroup === 9 ? (N ? N.items.filter(openNow) : [])
+      : noticesSince(LIST.ntDays).filter((n) => LIST.ntGroup < 0 || ntGroup(n) === LIST.ntGroup))
+      .filter((n) => listMatch(`${n.sido} ${n.area} ${n.addr} ${n.title}`));
+    box.innerHTML = `<p class="note">${fmt(LIST.rows.length)}건${qNote} · 최근 순</p>
+      ${LIST.rows.length ? `<ul class="rows">${LIST.rows.slice(0, 200).map((n, k) => `<li>
+        <div class="top"><span class="kb n${ntGroup(n)}">${NT_LABEL[ntGroup(n)]}</span><b>${esc(n.sido.replace(/특별시|광역시|도$/, ""))} ${esc(n.area)}</b><span>${mmdd(n.date)} 공고</span>${ddayHtml(n)}</div>
+        <div class="ttl">${esc(n.title)}</div>
+        <div class="sub">${n.addr ? `장소 ${esc(n.addr)}` : "장소는 공고 원문에서 확인"}${n.period && n.period.length ? ` · 신청 ${mmdd(n.period[0])}~${mmdd(n.period[1])}` : ""}${n.no ? ` · ${esc(n.no)}` : ""}</div>
+        <div class="acts"><button type="button" data-nt="${k}"${n.addr ? "" : " disabled"}>위치로 이동</button><a href="${esc(n.url)}" target="_blank" rel="noopener">공고 원문</a></div></li>`).join("")}</ul>` : `<p class="note">이 조건의 공고가 없어요.${LIST.q.trim() ? " 검색어나 기간을 바꿔 보세요." : ""}</p>`}
+      ${N && N.missing.length ? `<p class="note">게시판을 자동으로 읽지 못한 곳: ${N.missing.map(esc).join(", ")}. 이 지역은 시·구청 고시공고에서 직접 확인해 주세요.</p>` : ""}
+      <p class="note">제목과 첨부 공고문(hwpx)에서 장소·신청기간을 읽었어요. 정확한 내용은 공고 원문을 확인하세요.</p>`;
+    for (const b of box.querySelectorAll("[data-nt]")) b.addEventListener("click", () => goNotice(LIST.rows[+b.dataset.nt]));
+    return;
+  }
+  const L = S.endList, cut = Math.max(endCut(), (() => { const [y, m, d] = S.meta.localdata.split("-").map(Number), t = new Date(y, m - 13, d); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); })());
+  LIST.rows = [];
+  if (L) {
+    const v = aff ? aff.view : null;
+    for (let k = 0; k < L.e.length; k++) {
+      if (L.e[k] < cut) continue;
+      if (LIST.inView && v) { const [x, y] = TM(L.la[k], L.lo[k]); if (x < v[0] || x > v[2] || y < v[1] || y > v[3]) continue; }
+      const a = S.areas[L.a[k]];
+      if (!listMatch(`${a ? a.sido + " " + a.name : ""} ${L.ad[k]} ${L.n[k]}`)) continue;
+      LIST.rows.push(k);
+    }
+  }
+  box.innerHTML = loading ? `<p class="note">불러오는 중…</p>` : !L ? `<p class="note">목록을 불러오지 못했어요.</p>` : `<p class="note">${fmt(LIST.rows.length)}곳${qNote}${S.endPeriod === "all" ? " (목록은 최근 1년까지)" : ""} · 최근 순</p>
+    ${LIST.rows.length ? `<ul class="rows">${LIST.rows.slice(0, LIST.endMax).map((k) => `<li class="go" tabindex="0" data-ei="${k}">
+      <div class="top"><span class="kb e${L.s[k]}">${END_ST[L.s[k]]}</span><b>${ymdTxt(L.e[k])}</b>${L.r[k] >= 0 ? `<span><svg class="ico" aria-hidden="true"><use href="#cloverIcon" style="fill:var(--e2)"/></svg>다시 지정됨</span>` : ""}</div>
+      <div class="ttl">${esc(L.n[k] || "(이름 없음)")}</div><div class="sub">${esc(L.ad[k])}</div></li>`).join("")}</ul>` : `<p class="note">이 조건의 폐업·취소가 없어요.${LIST.q.trim() ? " 검색어나 기간을 바꿔 보세요." : ""}</p>`}
+    ${LIST.rows.length > LIST.endMax ? `<button class="lgbtn" type="button" id="moreBtn">더 보기 (${fmt(LIST.rows.length - LIST.endMax)}곳 남음)</button>` : ""}`;
+  for (const li of box.querySelectorAll("[data-ei]")) {
     const go = () => goEnded(+li.dataset.ei);
     li.addEventListener("click", go);
     li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
   }
-  if ($("inViewBtn")) $("inViewBtn").addEventListener("click", () => { LIST.inView = !LIST.inView; renderLists(); });
-  if ($("moreBtn")) $("moreBtn").addEventListener("click", () => { LIST.endMax += 200; renderLists(); });
+  if ($("moreBtn")) $("moreBtn").addEventListener("click", () => { LIST.endMax += 200; fillRows(); });
 }
 function goTo(lat, lng, then) {
   map.setLevel(3);

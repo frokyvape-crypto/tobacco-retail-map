@@ -1357,17 +1357,24 @@ function goEnded(k) {
 }
 function goNotice(n) {
   if (!n || !n.addr) return;
-  geocoder.addressSearch(`${n.sido} ${n.area} ${n.addr}`, (res, st) => {
-    if (st !== kakao.maps.services.Status.OK || !res[0]) { setHint("공고의 장소를 지도에서 찾지 못했어요. 공고 원문을 확인해 주세요"); setTimeout(() => setHint(""), 3500); return; }
-    const lat = +res[0].y, lng = +res[0].x;
-    goTo(lat, lng, () => renderNotice(n, lat, lng));
-  });
+  // 지도 주소에 없는 번지(새 건물·공고 오기)는 같은 쪽 이웃 번지로 근처를 잡는다(도로명 번지는 약 10m 간격)
+  const m = n.addr.match(/^(.*?)(\d+)(?:-\d+)?$/);
+  const tries = [...new Set([n.addr, ...(m ? [0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10].map((d) => +m[2] + d).filter((k) => k > 0).map((k) => m[1] + k) : [])])];
+  const next = (i) => {
+    if (i >= tries.length) { setHint(`공고의 장소(${n.addr})를 지도에서 찾지 못했어요. 공고 원문을 확인해 주세요`); setTimeout(() => setHint(""), 3500); return; }
+    geocoder.addressSearch(`${n.sido} ${n.area} ${tries[i]}`, (res, st) => {
+      if (st !== kakao.maps.services.Status.OK || !res[0]) return next(i + 1);
+      const lat = +res[0].y, lng = +res[0].x;
+      goTo(lat, lng, () => renderNotice(n, lat, lng, i ? tries[i] : ""));
+    });
+  };
+  next(0);
 }
-function renderNotice(n, lat, lng) {
+function renderNotice(n, lat, lng, near) {
   const [x, y] = TM(lat, lng), g = ntGroup(n);
   placeMarkers([x, y], null);
   openSheet("ntc", `${esc(n.sido.replace(/특별시|광역시/, ""))} ${esc(n.area)} · ${mmdd(n.date)} 공고`, esc(n.title), NT_LABEL[g], `
-    <dl class="kv"><dt>장소</dt><dd>${esc(n.addr)}</dd>
+    <dl class="kv"><dt>장소</dt><dd>${esc(n.addr)}${near ? `<br><span class="note">지도 주소에 없는 번지라 가까운 ${esc(near)} 자리로 옮겼어요</span>` : ""}</dd>
       <dt>신청기간</dt><dd>${n.period && n.period.length ? `${n.period[0]} ~ ${n.period[1]} ${ddayHtml(n)}` : "공고 원문에서 확인"}</dd>
       ${n.no ? `<dt>공고번호</dt><dd>${esc(n.no)}</dd>` : ""}${n.dept ? `<dt>담당</dt><dd>${esc(n.dept)}</dd>` : ""}</dl>
     <p class="note">${NT_WHY[g]}</p>
